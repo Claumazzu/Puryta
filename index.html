@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Puryta</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#e6e4ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17161b" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Puryta">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: palco de tela cheia com barra de ferramentas flutuante no topo e barra contextual embaixo,
+   que só aparece quando há seleção. A interface fica fora do caminho da imagem. */
+:root {
+  --ui-bg: #f4f3f6; --ui-panel: #ffffff; --ui-line: #d9d6e0; --ui-fg: #25222d; --ui-muted: #6f6a7d;
+  --ui-hover: #ebe9f0; --accent: #2f6fe4; --accent-fg: #ffffff; --danger: #c93c3c;
+  --canvas: #e6e4ea; --canvas-dot: #cfccd8;
+  --shadow: 0 6px 24px rgba(30, 20, 60, .16), 0 1px 3px rgba(30, 20, 60, .12);
+  --font: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --ui-bg: #1b1a20; --ui-panel: #25232b; --ui-line: #37343f; --ui-fg: #ecebf1; --ui-muted: #9a96a8;
+  --ui-hover: #302d38; --accent: #6aa2ff; --accent-fg: #0c1a33; --danger: #ff7b7b;
+  --canvas: #17161b; --canvas-dot: #28262f; --shadow: 0 8px 28px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --ui-bg: #1b1a20; --ui-panel: #25232b; --ui-line: #37343f; --ui-fg: #ecebf1; --ui-muted: #9a96a8;
+  --ui-hover: #302d38; --accent: #6aa2ff; --accent-fg: #0c1a33; --danger: #ff7b7b;
+  --canvas: #17161b; --canvas-dot: #28262f; --shadow: 0 8px 28px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4); color-scheme: dark; }
+/* tom do fundo do canvas, escolhido pela usuária */
+:root[data-tone="mid"] { --canvas: #8a8794; --canvas-dot: #7b7886; }
+:root[data-tone="light"] { --canvas: #efeef2; --canvas-dot: #d6d3de; }
+:root[data-tone="black"] { --canvas: #0b0b0d; --canvas-dot: #1a1a1e; }
+
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; padding: 0; background: var(--ui-bg); color: var(--ui-fg); font-family: var(--font); font-size: 15px; overflow: hidden;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
+button { font: inherit; color: inherit; }
+svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+#stage { position: absolute; inset: 0; background-color: var(--canvas); touch-action: none; overflow: hidden; cursor: default;
+  background-image: radial-gradient(var(--canvas-dot) 1.2px, transparent 1.3px); }
+#world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.item { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.item img { display: block; width: 100%; height: 100%; pointer-events: none; -webkit-user-drag: none; }
+.item.note { padding: 4px; font: 400 22px/1.25 var(--font); width: max-content; border-radius: 4px; }
+.item.note.plain { white-space: pre-wrap; }
+.item.note p, .item.note li { white-space: pre-wrap; margin: 0; }
+.item.note ul, .item.note ol { margin: 0; padding-left: 1.4em; }
+.item.locked { outline: 0; }
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#ui svg.sel { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#ui .h { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; pointer-events: auto; display: grid; place-items: center; touch-action: none; }
+#ui .h::after { content: ""; width: 14px; height: 14px; border-radius: 4px; background: var(--ui-panel); border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+#ui .h.rot::after { border-radius: 50%; width: 18px; height: 18px; background: var(--accent); }
+#marquee { position: absolute; border: 1.5px dashed var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); display: none; pointer-events: none; }
+
+.bar { position: absolute; z-index: 5; display: flex; align-items: center; gap: 2px; padding: 4px; background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: 14px; box-shadow: var(--shadow); max-width: calc(100% - 24px); }
+#top { top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; }
+#top2 { top: calc(env(safe-area-inset-top, 0px) + 10px); right: 12px; }
+#ctx { left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); overflow-x: auto; }
+.btn { touch-action: manipulation; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 44px; height: 44px; padding: 0 11px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.btn:hover { background: var(--ui-hover); } .btn:active { background: var(--ui-line); }
+.btn:focus-visible, .row:focus-visible, .tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+.btn[disabled] { opacity: .35; pointer-events: none; }
+.btn.danger { color: var(--danger); }
+.btn .t { font-size: 13px; }
+.sep { width: 1px; align-self: stretch; margin: 8px 3px; background: var(--ui-line); }
+#boardname { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) { .btn .t.hide-s { display: none; } #boardname { max-width: 22vw; } }
+
+#empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; pointer-events: none; z-index: 2; }
+#empty .card { pointer-events: auto; width: min(460px, 100%); background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: 18px; box-shadow: var(--shadow); padding: 26px 24px 22px; display: grid; gap: 14px; }
+#empty .logo { border-radius: 15px; display: block; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+#empty h1 { margin: 0; font-size: 24px; line-height: 1.15; letter-spacing: -.01em; text-wrap: balance; }
+#empty p { margin: 0; color: var(--ui-muted); line-height: 1.45; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; }
+.cta .btn { border: 1px solid var(--ui-line); height: 48px; padding: 0 16px; }
+.cta .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+
+#sheet { position: absolute; inset: 0; z-index: 20; display: none; background: rgba(10, 8, 20, .45); }
+#sheet.on { display: block; }
+#panel { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; width: min(420px, calc(100% - 24px)); max-height: calc(100% - 24px - env(safe-area-inset-top, 0px)); overflow: auto;
+  background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: 18px; box-shadow: var(--shadow); padding: 14px; display: grid; gap: 10px; }
+#panel h2 { margin: 2px 4px 0; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--ui-muted); font-weight: 600; }
+.row { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-radius: 12px; border: 1px solid var(--ui-line); min-width: 0; }
+.row.cur { border-color: var(--accent); }
+.row .nm { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 8px 0; cursor: pointer; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .nm small { display: block; font-weight: 400; color: var(--ui-muted); font-size: 12px; }
+.row input { flex: 1; min-width: 0; font: inherit; font-weight: 600; background: var(--ui-bg); color: var(--ui-fg); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 10px; -webkit-user-select: text; user-select: text; }
+.hint { margin: 0 4px; color: var(--ui-muted); font-size: 13px; line-height: 1.45; }
+#toast { position: absolute; z-index: 30; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 74px); transform: translateX(-50%); max-width: min(520px, calc(100% - 32px)); background: var(--ui-fg); color: var(--ui-bg); padding: 10px 16px; border-radius: 12px; box-shadow: var(--shadow); font-weight: 500; font-size: 14px; line-height: 1.4; display: none; }
+#toast.on { display: block; }
+#drop { position: absolute; inset: 8px; z-index: 15; display: none; border: 3px dashed var(--accent); border-radius: 18px; pointer-events: none; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+#drop.on { display: block; }
+@media (prefers-reduced-motion: no-preference) { #toast { animation: up .18s ease-out; } @keyframes up { from { opacity: 0; margin-top: -6px; } } }
+</style>
+</head>
+<body>
+
+
+<div id="stage" aria-label="Quadro de referências">
+  <div id="world"></div>
+  <div id="ui"><svg class="sel" id="selsvg"></svg><div id="marquee"></div></div>
+</div>
+
+<div id="empty"><div class="card">
+  <svg class="logo" viewBox="0 0 512 512" width="60" height="60" aria-hidden="true"><defs><mask id="pm" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path transform="translate(300,208) scale(0.62)" d="M0 92 C -40 62 -104 20 -104 -34 C -104 -70 -76 -92 -48 -92 C -26 -92 -8 -80 0 -62 C 8 -80 26 -92 48 -92 C 76 -92 104 -70 104 -34 C 104 20 40 62 0 92 Z" fill="#000"/></mask></defs><rect width="512" height="512" fill="#000"/><g transform="translate(256 256) scale(1.0) translate(-282 -262)"><g mask="url(#pm)"><rect x="128" y="88" width="84" height="340" rx="42" fill="#fff"/><path transform="translate(300,208) scale(1.32)" d="M0 92 C -40 62 -104 20 -104 -34 C -104 -70 -76 -92 -48 -92 C -26 -92 -8 -80 0 -62 C 8 -80 26 -92 48 -92 C 76 -92 104 -70 104 -34 C 104 20 40 62 0 92 Z" fill="#fff"/></g></g></svg>
+  <h1>Abra um board do PureRef ou comece um novo</h1>
+  <p>Funciona com arquivos <b>.pur</b> do PureRef 2.x, incluindo GIFs. Posição, tamanho e rotação de cada imagem vêm do arquivo. Suas imagens ficam só neste aparelho.</p>
+  <div class="cta">
+    <button class="btn primary" data-act="open"><svg class="i"><use href="#i-open"/></svg>Abrir .pur</button>
+    <button class="btn" data-act="addimg"><svg class="i"><use href="#i-addimg"/></svg>Adicionar imagens</button>
+  </div>
+</div></div>
+
+<div class="bar" id="top" role="toolbar" aria-label="Quadro">
+  <button class="btn" data-act="boards" aria-label="Meus boards"><svg class="i"><use href="#i-boards"/></svg><span class="t" id="boardname">Boards</span></button>
+  <span class="sep"></span>
+  <button class="btn" data-act="open" aria-label="Abrir arquivo .pur"><svg class="i"><use href="#i-open"/></svg><span class="t hide-s">Abrir</span></button>
+  <button class="btn" data-act="addimg" aria-label="Adicionar imagens"><svg class="i"><use href="#i-addimg"/></svg><span class="t hide-s">Imagens</span></button>
+</div>
+<div class="bar" id="top2" role="toolbar" aria-label="Visualização">
+  <button class="btn" data-act="undo" id="b-undo" aria-label="Desfazer"><svg class="i"><use href="#i-undo"/></svg></button>
+  <button class="btn" data-act="redo" id="b-redo" aria-label="Refazer"><svg class="i"><use href="#i-redo"/></svg></button>
+  <span class="sep"></span>
+  <button class="btn" data-act="select" id="b-select" aria-pressed="false" aria-label="Selecionar vários"><svg class="i"><use href="#i-marquee"/></svg></button>
+  <button class="btn" data-act="fit" aria-label="Enquadrar tudo"><svg class="i"><use href="#i-fit"/></svg></button>
+  <button class="btn" data-act="tone" aria-label="Cor do fundo"><svg class="i"><use href="#i-tone"/></svg></button>
+</div>
+<div class="bar" id="ctx" hidden role="toolbar" aria-label="Item selecionado">
+  <button class="btn" data-act="front"><svg class="i"><use href="#i-front"/></svg><span class="t hide-s">Frente</span></button>
+  <button class="btn" data-act="back"><svg class="i"><use href="#i-back"/></svg><span class="t hide-s">Trás</span></button>
+  <button class="btn" data-act="flip"><svg class="i"><use href="#i-flip"/></svg><span class="t hide-s">Espelhar</span></button>
+  <button class="btn" data-act="unrot"><svg class="i"><use href="#i-unrot"/></svg><span class="t hide-s">Endireitar</span></button>
+  <button class="btn" data-act="dup"><svg class="i"><use href="#i-copy"/></svg><span class="t hide-s">Duplicar</span></button>
+  <button class="btn" data-act="lock" id="b-lock"><svg class="i"><use href="#i-lock"/></svg><span class="t hide-s" id="locktxt">Travar</span></button>
+  <span class="sep"></span>
+  <button class="btn danger" data-act="del" aria-label="Apagar"><svg class="i"><use href="#i-trash"/></svg><span class="t hide-s">Apagar</span></button>
+</div>
+
+<div id="sheet"><div id="panel" role="dialog" aria-label="Meus boards"></div></div>
+<div id="toast" role="status"></div>
+<div id="drop"></div>
+<input type="file" id="f-open" hidden multiple>
+<input type="file" id="f-img" hidden multiple accept="image/*">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-addimg" viewBox="0 0 24 24"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M3 16l4-4 4 4 2-2 4 4"/><path d="M20 3v6M17 6h6"/></symbol>
+<symbol id="i-boards" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+<symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></symbol>
+<symbol id="i-marquee" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3.2 3.2"/></symbol>
+<symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/></symbol>
+<symbol id="i-tone" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol>
+<symbol id="i-front" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5" fill="currentColor"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><rect x="4" y="4" width="11" height="11" rx="1.5"/><path d="M9 20h10a1 1 0 0 0 1-1V9"/></symbol>
+<symbol id="i-flip" viewBox="0 0 24 24"><path d="M12 3v18" stroke-dasharray="2.5 2.5"/><path d="M9 7L3.5 17H9z"/><path d="M15 7l5.5 10H15z"/></symbol>
+<symbol id="i-unrot" viewBox="0 0 24 24"><path d="M4 5v5h5"/><path d="M4.6 10A8 8 0 1 1 6 17"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+</defs></svg>
+
+<script>
+/* Leitor de arquivos .pur do PureRef 2.x.
+ *
+ * Estrutura (descoberta por análise do arquivo, versão 2.1.3):
+ *  - O arquivo inteiro é um banco SQLite (páginas de 4096 bytes).
+ *  - Os primeiros N bytes do banco foram sobrescritos por um cabeçalho do PureRef
+ *    (versão, hash, miniatura JPEG) e os bytes originais ficam copiados no FINAL do arquivo.
+ *  - O u32 big-endian no offset 18 do arquivo é o offset onde esse final começa.
+ *  - Colunas binárias (transform, bounds...) foram gravadas como TEXT: cada byte virou um
+ *    caractere Latin-1 codificado em UTF-8. Aqui desfazemos isso.
+ *  - Valores binários são QVariant do Qt (QDataStream big-endian).
+ */
+(function (root) {
+  'use strict';
+
+  const SQLITE_MAGIC = 'SQLite format 3\0';
+
+  function dvOf(u8) { return new DataView(u8.buffer, u8.byteOffset, u8.byteLength); }
+
+  /* ---------- 1. Reconstrução do banco ---------- */
+  function rebuildDatabase(file) {
+    const dv = dvOf(file);
+    if (file.length < 64) throw new Error('Arquivo pequeno demais para ser um .pur.');
+    const dbOff = dv.getUint32(18, false);
+    const headLen = file.length - dbOff;
+    const magicAt = (o) => String.fromCharCode(...file.subarray(o, o + 16));
+    if (dbOff > 0 && dbOff < file.length && magicAt(dbOff) === SQLITE_MAGIC) {
+      const out = new Uint8Array(dbOff);
+      out.set(file.subarray(dbOff), 0);                         // bytes originais do início
+      out.set(file.subarray(headLen, dbOff), file.length - dbOff); // resto do banco
+      return out;
+    }
+    if (magicAt(0) === SQLITE_MAGIC) return file; // banco puro, sem cabeçalho
+    throw new Error('Este não parece ser um .pur do PureRef 2.x (talvez seja um arquivo da versão 1.x).');
+  }
+
+  /* ---------- 2. Leitor mínimo de SQLite (somente leitura) ---------- */
+  function SqliteReader(db) {
+    const dv = dvOf(db);
+    let pageSize = dv.getUint16(16, false); if (pageSize === 1) pageSize = 65536;
+    const reserved = db[20];
+    const U = pageSize - reserved;
+    const textEnc = dv.getUint32(56, false); // 1 = UTF-8
+    if (textEnc !== 1 && textEnc !== 0) throw new Error('Codificação de texto SQLite não suportada.');
+    const td = new TextDecoder('utf-8');
+    const page = (n) => db.subarray((n - 1) * pageSize, n * pageSize);
+
+    function varint(buf, o) {
+      let v = 0n, i = 0;
+      for (; i < 8; i++) { const b = buf[o + i]; v = (v << 7n) | BigInt(b & 0x7f); if (!(b & 0x80)) return [Number(v), o + i + 1]; }
+      const b = buf[o + 8]; v = (v << 8n) | BigInt(b); return [Number(BigInt.asIntN(64, v)), o + 9];
+    }
+
+    function readPayload(buf, pstart, P, isTable) {
+      const X = U - 35, M = Math.floor(((U - 12) * 32) / 255) - 23;
+      if (P <= X) return buf.subarray(pstart, pstart + P);
+      let local = M + ((P - M) % (U - 4)); if (local > X) local = M;
+      const out = new Uint8Array(P);
+      out.set(buf.subarray(pstart, pstart + local), 0);
+      let got = local, ov = new DataView(buf.buffer, buf.byteOffset).getUint32(pstart + local, false);
+      while (got < P && ov) {
+        const pg = page(ov), next = dvOf(pg).getUint32(0, false);
+        const take = Math.min(U - 4, P - got);
+        out.set(pg.subarray(4, 4 + take), got); got += take; ov = next;
+      }
+      return out;
+    }
+
+    function decodeRecord(p) {
+      let [hlen, o] = varint(p, 0); const types = [];
+      while (o < hlen) { let t; [t, o] = varint(p, o); types.push(t); }
+      const pd = dvOf(p), vals = []; let q = hlen;
+      for (const t of types) {
+        if (t === 0) vals.push(null);
+        else if (t >= 1 && t <= 6) {
+          const n = [0, 1, 2, 3, 4, 6, 8][t]; let v = 0n;
+          for (let i = 0; i < n; i++) v = (v << 8n) | BigInt(p[q + i]);
+          v = BigInt.asIntN(n * 8, v); vals.push(Number(v)); q += n;
+        } else if (t === 7) { vals.push(pd.getFloat64(q, false)); q += 8; }
+        else if (t === 8) vals.push(0); else if (t === 9) vals.push(1);
+        else if (t >= 12) {
+          const n = t % 2 === 0 ? (t - 12) / 2 : (t - 13) / 2;
+          const bytes = p.subarray(q, q + n); q += n;
+          vals.push(t % 2 === 0 ? bytes.slice() : { text: bytes.slice() });
+        } else throw new Error('Tipo de coluna SQLite inválido.');
+      }
+      return vals;
+    }
+
+    function walk(pgno, cb) {
+      const pg = page(pgno), pv = dvOf(pg), base = pgno === 1 ? 100 : 0, type = pg[base];
+      const n = pv.getUint16(base + 3, false);
+      if (type === 0x0d) {
+        for (let i = 0; i < n; i++) {
+          let o = pv.getUint16(base + 8 + i * 2, false), P, rowid;
+          [P, o] = varint(pg, o); [rowid, o] = varint(pg, o);
+          cb(rowid, decodeRecord(readPayload(pg, o, P, true)));
+        }
+      } else if (type === 0x05) {
+        for (let i = 0; i < n; i++) walk(pv.getUint32(pv.getUint16(base + 12 + i * 2, false), false), cb);
+        walk(pv.getUint32(base + 8, false), cb);
+      } else throw new Error('Página SQLite inesperada (tipo ' + type + ').');
+    }
+
+    // catálogo
+    const tables = {};
+    walk(1, (rowid, r) => {
+      const kind = r[0] && r[0].text ? td.decode(r[0].text) : r[0];
+      if (kind !== 'table') return;
+      const name = td.decode(r[1].text), root = r[3], sql = td.decode(r[4].text);
+      const inner = sql.slice(sql.indexOf('(') + 1, sql.lastIndexOf(')'));
+      const cols = []; let depth = 0, cur = '';
+      for (const ch of inner) {
+        if (ch === '(') depth++; if (ch === ')') depth--;
+        if (ch === ',' && depth === 0) { cols.push(cur); cur = ''; } else cur += ch;
+      }
+      cols.push(cur);
+      tables[name] = { root, cols: cols.map((c) => c.trim().split(/\s+/)[0].replace(/["`\[\]]/g, '')), pk: cols.findIndex((c) => /INTEGER\s+PRIMARY\s+KEY/i.test(c)) };
+    });
+
+    function rows(name) {
+      const t = tables[name]; if (!t) return [];
+      const out = [];
+      walk(t.root, (rowid, vals) => {
+        const row = {};
+        t.cols.forEach((c, i) => {
+          let v = vals[i] === undefined ? null : vals[i];
+          if (i === t.pk && v === null) v = rowid;
+          row[c] = v;
+        });
+        out.push(row);
+      });
+      return out;
+    }
+    return { tables, rows };
+  }
+
+  /* ---------- 3. Valores do Qt ---------- */
+  const utf8 = new TextDecoder('utf-8');
+  // Texto: string. Binário gravado como TEXT: devolve os bytes originais.
+  function asBytes(v) {
+    if (v == null) return null;
+    if (v instanceof Uint8Array) return v;
+    if (v.text) { // TEXT -> UTF-8 -> pontos de código Latin-1 -> bytes
+      const s = utf8.decode(v.text), out = new Uint8Array(s.length);
+      for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 0xff;
+      return out;
+    }
+    return null;
+  }
+  function asString(v) { return v == null ? null : (v.text ? utf8.decode(v.text) : String(v)); }
+
+  // QVariant<QTransform>: u32 tipo(80), u8 nulo, 9 doubles. Retorna [a,b,c,d,e,f] no formato CSS.
+  function readTransform(v) {
+    const b = asBytes(v); if (!b || b.length < 77) return [1, 0, 0, 1, 0, 0];
+    const dv = dvOf(b), d = (i) => dv.getFloat64(5 + i * 8, false);
+    return [d(0), d(1), d(3), d(4), d(6), d(7)];
+  }
+  function readRectF(v) { // QVariant<QRectF>: x,y,w,h
+    const b = asBytes(v); if (!b || b.length < 37) return null;
+    const dv = dvOf(b); return { x: dv.getFloat64(5, false), y: dv.getFloat64(13, false), w: dv.getFloat64(21, false), h: dv.getFloat64(29, false) };
+  }
+  // QVariant<QSizeF> (tipo 21) ou QSize (tipo 5); também aceita texto "LxA". Devolve {w,h} ou null.
+  function readSizeF(v) {
+    if (v && v.text) { const s = utf8.decode(v.text); const m = s.match(/^\s*(\d+(?:\.\d+)?)\s*[x,;]\s*(\d+(?:\.\d+)?)\s*$/i); if (m) return { w: +m[1], h: +m[2] }; }
+    const b = asBytes(v); if (!b || b.length < 13) return null;
+    const dv = dvOf(b), t = dv.getUint32(0, false); let w, h;
+    if (t === 21 && b.length >= 21) { w = dv.getFloat64(5, false); h = dv.getFloat64(13, false); }
+    else if (t === 5) { w = dv.getInt32(5, false); h = dv.getInt32(9, false); }
+    else return null;
+    return w > 0 && h > 0 && isFinite(w) && isFinite(h) ? { w, h } : null;
+  }
+  // QVariant<QPainterPath> do PureRef: nome do tipo, u32 contagem, N x (i32 tipo, f64 x, f64 y).
+  function readPathBounds(v) {
+    const b = asBytes(v); if (!b) return null;
+    const idx = String.fromCharCode(...b).indexOf('QPainterPath');
+    if (idx < 0) return null;
+    const dv = dvOf(b); let o = idx + 'QPainterPath'.length + 1; // +NUL final do nome
+    if (o + 4 > b.length) return null;
+    const cnt = dv.getUint32(o, false); o += 4;
+    if (cnt < 1 || cnt > 4096 || o + cnt * 20 > b.length) return null;
+    let x0 = 1e300, y0 = 1e300, x1 = -1e300, y1 = -1e300;
+    for (let i = 0; i < cnt; i++) {
+      const t = dv.getInt32(o, false), x = dv.getFloat64(o + 4, false), y = dv.getFloat64(o + 12, false); o += 20;
+      if (t > 1) continue; // só mover/linha; curvas ignoradas
+      if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y;
+    }
+    return x0 > x1 ? null : { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+  // Cor: aceita '#rrggbb' ou QVariant<QColor>
+  function readColor(v, fallback) {
+    const s = asString(v);
+    if (s && /^#[0-9a-f]{3,8}$/i.test(s)) return s;
+    const b = asBytes(v);
+    if (b && b.length >= 16) {
+      const dv = dvOf(b), t = dv.getUint32(0, false);
+      if (t === 67) { const r = dv.getUint16(8, false) >> 8, g = dv.getUint16(10, false) >> 8, bl = dv.getUint16(12, false) >> 8, a = dv.getUint16(6, false) / 65535;
+        return 'rgba(' + r + ',' + g + ',' + bl + ',' + a.toFixed(3) + ')'; }
+    }
+    return fallback;
+  }
+
+  /* ---------- 4. Matrizes (convenção do Qt: aplica t1 primeiro, depois t2) ---------- */
+  function mul(t1, t2) {
+    return [t1[0] * t2[0] + t1[1] * t2[2], t1[0] * t2[1] + t1[1] * t2[3],
+            t1[2] * t2[0] + t1[3] * t2[2], t1[2] * t2[1] + t1[3] * t2[3],
+            t1[4] * t2[0] + t1[5] * t2[2] + t2[4], t1[4] * t2[1] + t1[5] * t2[3] + t2[5]];
+  }
+
+  const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml' };
+
+  /* ---------- 5. API principal ---------- */
+  function parsePur(arrayBuffer) {
+    const file = new Uint8Array(arrayBuffer);
+    const db = rebuildDatabase(file);
+    const sql = SqliteReader(db);
+    const warnings = [];
+
+    const meta = sql.rows('metadata')[0] || {};
+    const images = {};
+    for (const r of sql.rows('images')) {
+      const fmt = (asString(r.format) || 'png').toLowerCase();
+      images[r.id] = { id: r.id, name: (asString(r.source) || '').split(/[\\/]/).pop(), format: fmt, mime: MIME[fmt] || 'application/octet-stream',
+                       bytes: asBytes(r.data), w: r.width, h: r.height };
+    }
+    const base = {};
+    for (const r of sql.rows('items')) base[r.id] = { id: r.id, parent: r.parent, name: asString(r.name) || '', t: readTransform(r.transform), z: r.z || 0, opacity: r.opacity == null ? 1 : r.opacity, locked: !!r.locked };
+    const imgItems = {}; for (const r of sql.rows('items_images')) imgItems[r.id] = r;
+    const notes = {}; for (const r of sql.rows('items_notes')) notes[r.id] = r;
+    const groups = {}; for (const r of sql.rows('items_groups')) groups[r.id] = r;
+    const drawings = sql.rows('items_drawings');
+    if (drawings.length) warnings.push(drawings.length + ' desenho(s) à mão livre não foram importados (ainda não suportado).');
+
+    // matriz do item até a cena (percorre os grupos pais)
+    const worldOf = (it) => { let m = it.t, p = it.parent, g = 0; while (p != null && p >= 0 && base[p] && g++ < 64) { m = mul(m, base[p].t); p = base[p].parent; } return m; };
+
+    const items = [];
+    for (const id in base) {
+      const it = base[id];
+      if (imgItems[id]) {
+        const ii = imgItems[id], img = images[ii.image];
+        if (!img || !img.bytes) { warnings.push('Imagem ausente no item ' + (it.name || id)); continue; }
+        const m = mul(readTransform(ii.image_transform), worldOf(it));
+        const pb = readPathBounds(ii.image_bounds);
+        let clip = null;
+        if (pb) { const T = readTransform(ii.image_transform); // caixa de corte na coordenada do item -> pixels da imagem
+          const x0 = pb.x - T[4], y0 = pb.y - T[5];
+          if (Math.abs(x0) > 0.5 || Math.abs(y0) > 0.5 || Math.abs(pb.w - img.w) > 0.5 || Math.abs(pb.h - img.h) > 0.5) clip = { x: x0, y: y0, w: pb.w, h: pb.h }; }
+        items.push({ id: +id, type: 'image', name: it.name, img: ii.image, m, w: img.w, h: img.h, z: it.z, opacity: it.opacity, locked: it.locked, clip, playing: ii.playback_state });
+      } else if (notes[id]) {
+        const n = notes[id];
+        items.push({ id: +id, type: 'note', name: it.name, m: worldOf(it), z: it.z, opacity: it.opacity, locked: it.locked, text: asString(n.text) || '',
+                     color: readColor(n.text_color, '#f2f2f2'), bg: readColor(n.background_color, 'transparent'), fixed: readSizeF(n.fixed_size) });
+      } else if (groups[id]) { /* grupos viram itens soltos; filhos já trazem a matriz do grupo */ }
+    }
+    items.sort((a, b) => a.z - b.z);
+
+    const vt = readTransform(meta.view_transform);
+    return { version: asString(meta.application_version), items, images, sceneRect: readRectF(meta.scene_rect), view: { zoom: vt[0], sx: meta.horizontal_scroll, sy: meta.vertical_scroll },
+             thumbnail: asBytes(meta.thumbnail), sourcePath: asString(meta.last_load_path), warnings };
+  }
+
+  const api = { parsePur, rebuildDatabase, SqliteReader, mul };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PurParser = api;
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+(function () {
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+const stage = $('#stage'), world = $('#world'), svg = $('#selsvg'), ui = $('#ui'), marq = $('#marquee');
+const MIN_Z = 0.02, MAX_Z = 40;
+
+/* ================= Estado ================= */
+let board = null;           // { id, name, items, images, view, nextId }
+let sel = new Set();
+let selectMode = false;
+const els = new Map();
+let undoStack = [], redoStack = [];
+let spaceDown = false;
+
+const view = () => board.view;
+const itemById = (id) => board.items.find((i) => i.id === id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const mul = PurParser.mul;
+
+/* ================= Geometria ================= */
+const apply = (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+const corners = (it) => [apply(it.m, 0, 0), apply(it.m, it.w, 0), apply(it.m, it.w, it.h), apply(it.m, 0, it.h)];
+const toScreen = (p) => [p[0] * view().z + view().x, p[1] * view().z + view().y];
+const toWorld = (sx, sy) => [(sx - view().x) / view().z, (sy - view().y) / view().z];
+function about(ax, ay, s, rot) { // p -> a + s*R(p-a), no formato CSS [a,b,c,d,e,f]
+  const c = Math.cos(rot) * s, n = Math.sin(rot) * s;
+  return [c, n, -n, c, ax - (c * ax - n * ay), ay - (n * ax + c * ay)];
+}
+function boundsOf(items) {
+  let x0 = 1e300, y0 = 1e300, x1 = -1e300, y1 = -1e300;
+  for (const it of items) for (const p of corners(it)) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+  return x0 > x1 ? null : { x0, y0, x1, y1 };
+}
+
+/* ================= Aviso rápido ================= */
+let toastT;
+function toast(msg, ms) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms || 3800);
+}
+
+/* ================= Persistência (IndexedDB) ================= */
+const store = {
+  db: null,
+  open() {
+    return new Promise((res) => {
+      try {
+        const r = indexedDB.open('mesa-de-referencias', 1);
+        r.onupgradeneeded = () => { r.result.createObjectStore('boards', { keyPath: 'id' }); r.result.createObjectStore('blobs'); };
+        r.onsuccess = () => { this.db = r.result; res(true); };
+        r.onerror = () => res(false); r.onblocked = () => res(false);
+      } catch (e) { res(false); }
+    });
+  },
+  rq: (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }),
+  done: (t) => new Promise((res, rej) => { t.oncomplete = () => res(); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }),
+  async list() { if (!this.db) return []; return this.rq(this.db.transaction('boards').objectStore('boards').getAll()); },
+  async load(id) {
+    const t = this.db.transaction(['boards', 'blobs']);
+    const meta = await this.rq(t.objectStore('boards').get(id)); if (!meta) return null;
+    const range = IDBKeyRange.bound(id + '/', id + '/￿');
+    const keys = await this.rq(t.objectStore('blobs').getAllKeys(range)), vals = await this.rq(t.objectStore('blobs').getAll(range));
+    const images = {};
+    keys.forEach((k, i) => { const n = +k.split('/')[1]; images[n] = Object.assign({ id: n, persisted: true }, vals[i]); });
+    return Object.assign({}, meta, { images });
+  },
+  async save(b) {
+    if (!this.db) return;
+    const t = this.db.transaction(['boards', 'blobs'], 'readwrite');
+    t.objectStore('boards').put({ id: b.id, name: b.name, updated: Date.now(), view: b.view, nextId: b.nextId, items: b.items, count: b.items.length });
+    for (const k in b.images) { const im = b.images[k]; if (!im.persisted) { t.objectStore('blobs').put({ name: im.name, mime: im.mime, buf: im.buf, w: im.w, h: im.h }, b.id + '/' + k); im.persisted = true; } }
+    await this.done(t);
+  },
+  async remove(id) {
+    if (!this.db) return;
+    const t = this.db.transaction(['boards', 'blobs'], 'readwrite');
+    t.objectStore('boards').delete(id); t.objectStore('blobs').delete(IDBKeyRange.bound(id + '/', id + '/￿'));
+    await this.done(t);
+  }
+};
+let dirtyT, warnedSave = false;
+function markDirty() { clearTimeout(dirtyT); dirtyT = setTimeout(saveNow, 700); }
+async function saveNow() {
+  clearTimeout(dirtyT); if (!board || board.id === 'tmp' || !store.db) return;
+  try { await store.save(board); }
+  catch (e) { if (!warnedSave) { warnedSave = true; toast('Não consegui salvar neste navegador. Exporte um backup pelo menu de boards.', 6000); } }
+}
+const pref = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento */ } }
+};
+
+/* ================= Imagens e elementos ================= */
+function urlOf(imgId) {
+  const im = board.images[imgId]; if (!im) return '';
+  if (!im.url) im.url = URL.createObjectURL(new Blob([im.buf], { type: im.mime }));
+  return im.url;
+}
+/* Notas: o PureRef 2.x guarda o texto como HTML do Qt. Reconstruímos só tags e estilos seguros. */
+const NOTE_TAGS = new Set(['P', 'SPAN', 'B', 'I', 'U', 'S', 'EM', 'STRONG', 'BR', 'DIV', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'SUB', 'SUP', 'FONT']);
+const NOTE_CSS = ['font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration', 'text-decoration-line', 'color', 'background-color', 'text-align', 'text-indent', 'line-height', 'letter-spacing', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right', 'vertical-align'];
+function cleanStyle(src, dst) {
+  if (!src) return;
+  for (const prop of NOTE_CSS) {
+    const v = src.getPropertyValue(prop); if (!v || /url\(|expression|@import|javascript:/i.test(v)) continue;
+    dst.setProperty(prop, prop === 'font-family' ? v + ', Figtree, system-ui, "Hiragino Sans", "Noto Sans CJK JP", sans-serif' : v);
+  }
+}
+function buildNote(d, it) {
+  const text = it.text || '';
+  d.style.color = it.color; d.style.background = it.bg;
+  if (it.fixed) d.style.width = it.fixed.w + 'px';
+  if (!/<\s*(html|body|p|span|div|br|b|i|u)\b/i.test(text)) { d.classList.add('plain'); d.textContent = text; return; }
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  cleanStyle(doc.body.style, d.style); if (it.color) d.style.color = d.style.color || it.color;
+  const walk = (from, to) => {
+    for (const n of from.childNodes) {
+      if (n.nodeType === 3) { if (/^\s*$/.test(n.nodeValue) && (to === d || to.tagName === 'UL' || to.tagName === 'OL')) continue; to.appendChild(document.createTextNode(n.nodeValue)); }
+      else if (n.nodeType === 1) {
+        if (NOTE_TAGS.has(n.tagName)) { const e = document.createElement(n.tagName.toLowerCase()); cleanStyle(n.style, e.style); walk(n, e); to.appendChild(e); }
+        else if (!['SCRIPT', 'STYLE', 'HEAD', 'TITLE', 'META', 'LINK', 'IFRAME', 'OBJECT', 'EMBED'].includes(n.tagName)) walk(n, to);
+      }
+    }
+  };
+  walk(doc.body, d);
+}
+function makeEl(it) {
+  const d = document.createElement('div'); d.className = 'item' + (it.type === 'note' ? ' note' : ''); d.dataset.id = it.id;
+  if (it.type === 'image') {
+    d.style.width = it.w + 'px'; d.style.height = it.h + 'px';
+    const im = new Image(); im.decoding = 'async'; im.draggable = false; im.alt = it.name || ''; im.src = urlOf(it.img); d.appendChild(im);
+  } else buildNote(d, it);
+  els.set(it.id, d); world.appendChild(d);
+  if (it.type === 'note') { it.w = d.offsetWidth; it.h = d.offsetHeight; }
+  syncItem(it);
+}
+function syncItem(it) {
+  const d = els.get(it.id); if (!d) return;
+  d.style.transform = 'matrix(' + it.m.join(',') + ')';
+  d.style.zIndex = it.z; d.style.opacity = it.opacity == null ? 1 : it.opacity;
+  d.classList.toggle('locked', !!it.locked);
+  if (it.clip) { const c = it.clip; d.style.clipPath = 'inset(' + c.y + 'px ' + (it.w - c.x - c.w) + 'px ' + (it.h - c.y - c.h) + 'px ' + c.x + 'px)'; } else d.style.clipPath = '';
+}
+function normalizeZ() { board.items.sort((a, b) => a.z - b.z); board.items.forEach((it, i) => { it.z = i + 1; }); }
+function rebuildAll() {
+  world.textContent = ''; els.clear();
+  normalizeZ(); board.items.forEach(makeEl);
+  for (const id of [...sel]) if (!itemById(id)) sel.delete(id);
+  applyView(); updateChrome();
+}
+function applyView() {
+  const v = view(); world.style.transform = 'translate(' + v.x + 'px,' + v.y + 'px) scale(' + v.z + ')';
+  const g = Math.max(12, 28 * v.z); stage.style.backgroundSize = g + 'px ' + g + 'px';
+  stage.style.backgroundPosition = (v.x % g) + 'px ' + (v.y % g) + 'px';
+  drawSel();
+}
+function updateChrome() {
+  $('#boardname').textContent = board ? board.name : 'Boards';
+  $('#empty').hidden = !!(board && board.items.length);
+  $('#b-undo').disabled = !undoStack.length; $('#b-redo').disabled = !redoStack.length;
+  drawSel();
+}
+
+/* ================= Histórico ================= */
+const snapshot = () => JSON.stringify(board.items);
+function pushUndo(pre) { undoStack.push(pre || snapshot()); if (undoStack.length > 80) undoStack.shift(); redoStack = []; }
+function restore(json) { board.items = JSON.parse(json); rebuildAll(); markDirty(); }
+function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); }
+function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); }
+function mutate(fn) { pushUndo(); fn(); board.items.forEach(syncItem); updateChrome(); markDirty(); }
+
+/* ================= Câmera ================= */
+function zoomAt(sx, sy, nz) {
+  const v = view(); nz = clamp(nz, MIN_Z, MAX_Z); const wx = (sx - v.x) / v.z, wy = (sy - v.y) / v.z;
+  v.z = nz; v.x = sx - wx * nz; v.y = sy - wy * nz; applyView(); markDirty();
+}
+function fitBounds(b, maxZ) {
+  const W = stage.clientWidth, H = stage.clientHeight, v = view();
+  if (!b) { v.x = W / 2; v.y = H / 2; v.z = 1; applyView(); return; }
+  const bw = Math.max(1, b.x1 - b.x0), bh = Math.max(1, b.y1 - b.y0);
+  const padX = 56, padT = 84, padB = 84;
+  v.z = clamp(Math.min((W - 2 * padX) / bw, (H - padT - padB) / bh, maxZ || 4), MIN_Z, MAX_Z);
+  v.x = W / 2 - ((b.x0 + b.x1) / 2) * v.z; v.y = padT + (H - padT - padB) / 2 - ((b.y0 + b.y1) / 2) * v.z;
+  applyView(); markDirty();
+}
+const fitAll = () => fitBounds(boundsOf(board.items));
+
+/* ================= Seleção: moldura e alças ================= */
+function selItems() { return [...sel].map(itemById).filter(Boolean); }
+function selBox() { // pontos em coordenadas do mundo: tl, tr, br, bl
+  const its = selItems(); if (!its.length) return null;
+  if (its.length === 1) return { pts: corners(its[0]), single: true };
+  const b = boundsOf(its); return { pts: [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]], single: false };
+}
+const NS = 'http://www.w3.org/2000/svg';
+function drawSel() {
+  svg.textContent = ''; ui.querySelectorAll('.h').forEach((h) => h.remove());
+  const ctx = $('#ctx'); const its = board ? selItems() : [];
+  if (!its.length) { ctx.hidden = true; return; }
+  ctx.hidden = false;
+  const allLocked = its.every((i) => i.locked); $('#locktxt').textContent = allLocked ? 'Destravar' : 'Travar';
+  $('#b-lock').querySelector('use').setAttribute('href', allLocked ? '#i-unlock' : '#i-lock');
+  const css = getComputedStyle(document.documentElement), acc = css.getPropertyValue('--accent').trim() || '#2f6fe4';
+  const poly = (pts, w, op, dash) => { const p = document.createElementNS(NS, 'polygon'); p.setAttribute('points', pts.map((q) => toScreen(q).join(',')).join(' ')); p.setAttribute('fill', 'none'); p.setAttribute('stroke', acc); p.setAttribute('stroke-width', w); p.setAttribute('stroke-opacity', op); if (dash) p.setAttribute('stroke-dasharray', dash); svg.appendChild(p); };
+  if (its.length > 1) its.forEach((it) => poly(corners(it), 1.2, 0.7));
+  const box = selBox(); poly(box.pts, 2, 1);
+  if (its.every((i) => i.locked)) return;
+  const sp = box.pts.map(toScreen);
+  const mk = (cls, x, y, data) => { const h = document.createElement('div'); h.className = 'h ' + cls; h.style.left = x + 'px'; h.style.top = y + 'px'; h.dataset.h = data; ui.appendChild(h); };
+  sp.forEach((p, i) => mk('sc', p[0], p[1], i));
+  const mx = (sp[0][0] + sp[1][0]) / 2, my = (sp[0][1] + sp[1][1]) / 2;
+  let nx = sp[0][1] - sp[3][1], ny = sp[3][0] - sp[0][0]; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl; // normal para fora do topo
+  const rx = mx + nx * 40, ry = my + ny * 40;
+  const ln = document.createElementNS(NS, 'line'); ln.setAttribute('x1', mx); ln.setAttribute('y1', my); ln.setAttribute('x2', rx); ln.setAttribute('y2', ry); ln.setAttribute('stroke', acc); ln.setAttribute('stroke-width', 2); svg.appendChild(ln);
+  mk('rot', rx, ry, 'rot');
+}
+
+/* ================= Gestos ================= */
+const ptrs = new Map();
+let g = null, lastTap = { t: 0, id: -1 }, raf = 0, pending = null;
+const rectOf = () => stage.getBoundingClientRect();
+const P = (e) => { const r = rectOf(); return [e.clientX - r.left, e.clientY - r.top]; };
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+stage.addEventListener('pointerdown', (e) => {
+  if (!board) return;
+  try { stage.setPointerCapture(e.pointerId); } catch (x) { /* ok */ }
+  ptrs.set(e.pointerId, { p: P(e), type: e.pointerType });
+  if (ptrs.size === 2) { startPinch(); return; }
+  if (ptrs.size > 2) return;
+  const p = P(e), hnd = e.target.closest && e.target.closest('.h');
+  const forcePan = (e.pointerType === 'mouse' && (e.button === 1 || e.button === 2)) || spaceDown || e.altKey;
+  if (hnd && !forcePan) return startHandle(hnd.dataset.h, p);
+  const el = e.target.closest && e.target.closest('.item'), it = el && !forcePan ? itemById(+el.dataset.id) : null;
+  if (it) return startDrag(it, p, e);
+  if (forcePan || (e.pointerType === 'touch' && !selectMode)) g = { kind: 'pan', start: p, vx: view().x, vy: view().y, moved: false };
+  else g = { kind: 'marquee', start: p, add: e.shiftKey || (selectMode && e.pointerType === 'touch'), base: new Set(sel), moved: false };
+});
+
+function startDrag(it, p, e) {
+  const multi = e.shiftKey || e.metaKey || e.ctrlKey || selectMode;
+  g = { kind: 'drag', id: it.id, start: p, moved: false, pre: snapshot(), base: null, tap: null };
+  if (multi) { if (sel.has(it.id)) g.tap = 'toggle-off'; else sel.add(it.id); }
+  else if (!sel.has(it.id)) sel = new Set([it.id]); else g.tap = 'collapse';
+  g.base = selItems().map((i) => ({ id: i.id, m: i.m.slice() }));
+  drawSel();
+}
+function startHandle(h, p) {
+  const box = selBox(); if (!box) return;
+  const w0 = toWorld(p[0], p[1]);
+  g = { kind: 'handle', h, pre: snapshot(), moved: false, base: selItems().filter((i) => !i.locked).map((i) => ({ id: i.id, m: i.m.slice() })), box };
+  if (h === 'rot') { g.c = [(box.pts[0][0] + box.pts[2][0]) / 2, (box.pts[0][1] + box.pts[2][1]) / 2]; g.a0 = Math.atan2(w0[1] - g.c[1], w0[0] - g.c[0]); }
+  else { const i = +h; g.anchor = box.pts[(i + 2) % 4]; g.v0 = [box.pts[i][0] - g.anchor[0], box.pts[i][1] - g.anchor[1]]; }
+}
+function startPinch() {
+  const ids = [...ptrs.keys()].slice(0, 2), a = ptrs.get(ids[0]).p, b = ptrs.get(ids[1]).p;
+  const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], v = view();
+  g = { kind: 'pinch', ids, d0: Math.max(1, dist(a, b)), z0: v.z, wp: toWorld(mid[0], mid[1]) };
+  marq.style.display = 'none';
+}
+stage.addEventListener('pointermove', (e) => {
+  const rec = ptrs.get(e.pointerId); if (!rec || !g) return;
+  rec.p = P(e); pending = e; if (!raf) raf = requestAnimationFrame(step);
+});
+function step() {
+  raf = 0; if (!g || !board) return;
+  const v = view();
+  if (g.kind === 'pinch') {
+    const a = ptrs.get(g.ids[0]), b = ptrs.get(g.ids[1]); if (!a || !b) return;
+    const mid = [(a.p[0] + b.p[0]) / 2, (a.p[1] + b.p[1]) / 2];
+    v.z = clamp(g.z0 * dist(a.p, b.p) / g.d0, MIN_Z, MAX_Z); v.x = mid[0] - g.wp[0] * v.z; v.y = mid[1] - g.wp[1] * v.z; applyView(); return;
+  }
+  const rec = [...ptrs.values()][0]; if (!rec) return; const p = rec.p;
+  if (g.kind === 'pan') {
+    if (!g.moved && dist(p, g.start) < 4) return; g.moved = true;
+    v.x = g.vx + p[0] - g.start[0]; v.y = g.vy + p[1] - g.start[1]; applyView();
+  } else if (g.kind === 'marquee') {
+    if (!g.moved && dist(p, g.start) < 5) return; g.moved = true;
+    const x0 = Math.min(p[0], g.start[0]), y0 = Math.min(p[1], g.start[1]), x1 = Math.max(p[0], g.start[0]), y1 = Math.max(p[1], g.start[1]);
+    Object.assign(marq.style, { display: 'block', left: x0 + 'px', top: y0 + 'px', width: x1 - x0 + 'px', height: y1 - y0 + 'px' });
+    const ns = new Set(g.add ? g.base : []);
+    for (const it of board.items) { const pts = corners(it).map(toScreen), xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+      if (Math.max(...xs) >= x0 && Math.min(...xs) <= x1 && Math.max(...ys) >= y0 && Math.min(...ys) <= y1) ns.add(it.id); }
+    sel = ns; drawSel();
+  } else if (g.kind === 'drag') {
+    if (!g.moved && dist(p, g.start) < 6) return;
+    if (!g.moved) { g.moved = true; pushUndo(g.pre); }
+    const dx = (p[0] - g.start[0]) / v.z, dy = (p[1] - g.start[1]) / v.z;
+    for (const b of g.base) { const it = itemById(b.id); if (!it || it.locked) continue; it.m = [b.m[0], b.m[1], b.m[2], b.m[3], b.m[4] + dx, b.m[5] + dy]; syncItem(it); }
+    drawSel();
+  } else if (g.kind === 'handle') {
+    const w = toWorld(p[0], p[1]); let T;
+    if (g.h === 'rot') {
+      let rot = Math.atan2(w[1] - g.c[1], w[0] - g.c[0]) - g.a0, step15 = Math.PI / 12, snap = Math.round(rot / step15) * step15;
+      if (Math.abs(rot - snap) < 0.05) rot = snap; T = about(g.c[0], g.c[1], 1, rot);
+    } else {
+      const l2 = g.v0[0] * g.v0[0] + g.v0[1] * g.v0[1] || 1;
+      const s = clamp(((w[0] - g.anchor[0]) * g.v0[0] + (w[1] - g.anchor[1]) * g.v0[1]) / l2, 0.03, 60); T = about(g.anchor[0], g.anchor[1], s, 0);
+    }
+    if (!g.moved) { g.moved = true; pushUndo(g.pre); }
+    for (const b of g.base) { const it = itemById(b.id); if (it) { it.m = mul(b.m, T); syncItem(it); } }
+    drawSel();
+  }
+}
+function endPointer(e) {
+  const rec = ptrs.get(e.pointerId); ptrs.delete(e.pointerId); if (!rec || !g) { if (!ptrs.size) g = null; return; }
+  if (g.kind === 'pinch') { if (ptrs.size < 2) { g = { kind: 'none' }; markDirty(); } if (!ptrs.size) g = null; return; }
+  if (ptrs.size) return;
+  const gg = g; g = null; marq.style.display = 'none';
+  if (e.type === 'pointercancel') { if (gg.moved) markDirty(); return; }
+  if (gg.kind === 'drag') {
+    if (!gg.moved) {
+      const now = Date.now();
+      if (gg.tap === 'collapse') sel = new Set([gg.id]); else if (gg.tap === 'toggle-off') sel.delete(gg.id);
+      if (lastTap.id === gg.id && now - lastTap.t < 320) { const it = itemById(gg.id); if (it) fitBounds(boundsOf([it]), 6); lastTap = { t: 0, id: -1 }; }
+      else lastTap = { t: now, id: gg.id };
+      drawSel();
+    } else { markDirty(); updateChrome(); }
+  } else if (gg.kind === 'handle') { if (gg.moved) { markDirty(); updateChrome(); } }
+  else if (gg.kind === 'pan') { if (!gg.moved) { sel.clear(); drawSel(); } else markDirty(); }
+  else if (gg.kind === 'marquee') { if (!gg.moved && !gg.add) { sel.clear(); drawSel(); } }
+}
+stage.addEventListener('pointerup', endPointer); stage.addEventListener('pointercancel', endPointer);
+stage.addEventListener('contextmenu', (e) => e.preventDefault());
+stage.addEventListener('wheel', (e) => {
+  if (!board) return; e.preventDefault(); const p = P(e);
+  const mouseWheel = !e.ctrlKey && e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 40;
+  if (e.ctrlKey || mouseWheel || e.altKey) zoomAt(p[0], p[1], view().z * Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0016)));
+  else { view().x -= e.deltaX; view().y -= e.deltaY; applyView(); markDirty(); }
+}, { passive: false });
+['gesturestart', 'gesturechange'].forEach((n) => document.addEventListener(n, (e) => e.preventDefault()));
+
+/* ================= Ações sobre a seleção ================= */
+const act = {
+  front() { const its = selItems().sort((a, b) => a.z - b.z); mutate(() => { let z = Math.max(...board.items.map((i) => i.z)); its.forEach((i) => { i.z = ++z; }); normalizeZ(); }); },
+  back() { const its = selItems().sort((a, b) => b.z - a.z); mutate(() => { let z = Math.min(...board.items.map((i) => i.z)); its.forEach((i) => { i.z = --z; }); normalizeZ(); }); },
+  flip() { const box = selBox(); if (!box) return; const cx = (box.pts[0][0] + box.pts[2][0]) / 2, ax = box.single ? null : cx;
+    mutate(() => selItems().forEach((i) => { if (i.locked) return; const c = ax == null ? apply(i.m, i.w / 2, i.h / 2)[0] : ax; i.m = mul(i.m, [-1, 0, 0, 1, 2 * c, 0]); })); },
+  unrot() { mutate(() => selItems().forEach((i) => { if (i.locked) return; const c = apply(i.m, i.w / 2, i.h / 2), th = Math.atan2(i.m[1], i.m[0]); i.m = mul(i.m, about(c[0], c[1], 1, -th)); })); },
+  dup() { const its = selItems().sort((a, b) => a.z - b.z); if (!its.length) return; pushUndo();
+    let z = Math.max(...board.items.map((i) => i.z)); const ns = new Set();
+    its.forEach((i) => { const c = JSON.parse(JSON.stringify(i)); c.id = board.nextId++; c.z = ++z; c.locked = false; c.m = mul(c.m, [1, 0, 0, 1, 30 / view().z, 30 / view().z]); board.items.push(c); makeEl(c); ns.add(c.id); });
+    sel = ns; normalizeZ(); board.items.forEach(syncItem); updateChrome(); markDirty(); },
+  lock() { const its = selItems(), all = its.every((i) => i.locked); mutate(() => its.forEach((i) => { i.locked = !all; })); },
+  del() { const ids = new Set(sel); if (!ids.size) return; pushUndo(); board.items = board.items.filter((i) => !ids.has(i.id)); sel.clear(); rebuildAll(); markDirty(); },
+  undo, redo, fit() { fitAll(); },
+  select() { selectMode = !selectMode; $('#b-select').setAttribute('aria-pressed', selectMode); toast(selectMode ? 'Selecionar vários: toque nas imagens ou arraste uma área.' : 'Voltou ao modo normal: arrastar o fundo move o quadro.', 2600); },
+  tone() { const order = ['auto', 'mid', 'light', 'black'], cur = pref.get('tone') || 'auto', n = order[(order.indexOf(cur) + 1) % order.length]; setTone(n); },
+  open() { $('#f-open').value = ''; $('#f-open').click(); },
+  addimg() { $('#f-img').value = ''; $('#f-img').click(); },
+  boards() { openSheet(); }
+};
+function setTone(t) { const r = document.documentElement; if (t === 'auto') r.removeAttribute('data-tone'); else r.setAttribute('data-tone', t); pref.set('tone', t); drawSel(); }
+document.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); const n = b.dataset.act; if (act[n]) act[n](); }));
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches && e.target.matches('input,textarea')) return;
+  if (e.code === 'Space') { spaceDown = true; e.preventDefault(); }
+  if (!board) return; const mod = e.metaKey || e.ctrlKey;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && sel.size) { e.preventDefault(); act.del(); }
+  else if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  else if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); sel = new Set(board.items.map((i) => i.id)); drawSel(); }
+  else if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); act.dup(); }
+  else if (e.key === '0' || e.key.toLowerCase() === 'f') fitAll();
+  else if (e.key === 'Escape') { sel.clear(); drawSel(); closeSheet(); }
+});
+document.addEventListener('keyup', (e) => { if (e.code === 'Space') spaceDown = false; });
+
+/* ================= Boards ================= */
+function newBoard(name) {
+  board = { id: 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name || 'Novo board', items: [], images: {}, view: { x: stage.clientWidth / 2, y: stage.clientHeight / 2, z: 1 }, nextId: 1 };
+  sel = new Set(); undoStack = []; redoStack = []; pref.set('last', board.id); rebuildAll(); markDirty(); return board;
+}
+async function openBoard(id) {
+  await saveNow();
+  const b = await store.load(id); if (!b) { toast('Não encontrei esse board.'); return; }
+  board = b; sel = new Set(); undoStack = []; redoStack = []; pref.set('last', id); rebuildAll(); closeSheet();
+}
+const baseName = (n) => n.replace(/\.[^.]+$/, '');
+
+async function importPur(file) {
+  let res;
+  try { res = PurParser.parsePur(await file.arrayBuffer()); }
+  catch (e) { toast('Não consegui abrir "' + file.name + '": ' + e.message, 7000); return; }
+  await saveNow();
+  const b = newBoard(baseName(file.name) || 'Importado');
+  let maxId = 0;
+  for (const k in res.images) { const im = res.images[k]; b.images[k] = { id: +k, name: im.name, mime: im.mime, buf: im.bytes.buffer.slice(im.bytes.byteOffset, im.bytes.byteOffset + im.bytes.byteLength), w: im.w, h: im.h }; }
+  for (const it of res.items) { b.items.push(it); maxId = Math.max(maxId, it.id); }
+  b.nextId = Math.max(maxId, ...Object.keys(res.images).map(Number), 0) + 1;
+  rebuildAll(); fitAll(); markDirty();
+  const n = res.items.length;
+  toast('Abri "' + b.name + '" (PureRef ' + res.version + '): ' + n + (n === 1 ? ' item' : ' itens') + '.' + (res.warnings.length ? ' ' + res.warnings.join(' ') : ''), res.warnings.length ? 8000 : 4200);
+}
+async function importBackup(file) {
+  try {
+    const j = JSON.parse(await file.text()); if (j.app !== 'mesa-de-referencias') throw new Error('arquivo de outro programa');
+    await saveNow(); const b = newBoard(j.name || baseName(file.name));
+    for (const k in j.images) { const im = j.images[k]; b.images[k] = { id: +k, name: im.name, mime: im.mime, w: im.w, h: im.h, buf: fromB64(im.b64) }; }
+    b.items = j.items; b.nextId = j.nextId; rebuildAll(); fitAll(); markDirty(); toast('Backup aberto: ' + b.name);
+  } catch (e) { toast('Backup inválido: ' + e.message, 6000); }
+}
+const toB64 = (buf) => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+const fromB64 = (s) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; };
+async function shareOrDownload(blob, filename) {
+  try {
+    const f = new File([blob], filename, { type: blob.type });
+    if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); toast('Backup gerado.');
+  } catch (e) { toast('Não consegui salvar o backup neste navegador.', 5000); }
+}
+async function exportBackup() {
+  if (!board) return;
+  const images = {}; for (const k in board.images) { const im = board.images[k]; images[k] = { name: im.name, mime: im.mime, w: im.w, h: im.h, b64: toB64(im.buf) }; }
+  const blob = new Blob([JSON.stringify({ app: 'mesa-de-referencias', v: 1, name: board.name, nextId: board.nextId, items: board.items, images })], { type: 'application/json' });
+  let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
+  const fname = (board.name || 'board').replace(/[\\/:*?"<>|]/g, '_') + '.json';
+  if (!dl) { await shareOrDownload(blob, fname); return; }
+  try { await dl.save({ filename: (board.name || 'board').replace(/[\\/:*?"<>|]/g, '_') + '.json', data: blob }); toast('Backup pronto para salvar.'); }
+  catch (e) { if (!e || e.code !== 'declined') toast('Não foi possível salvar o backup (' + ((e && e.code) || 'erro') + ').', 5000); }
+}
+
+async function addImages(files) {
+  files = [...files].filter((f) => /^image\//.test(f.type) || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(f.name)); if (!files.length) return;
+  if (!board || board.id === 'tmp') newBoard('Novo board');
+  pushUndo(); const added = [];
+  for (const f of files) {
+    const buf = await f.arrayBuffer(), mime = f.type || 'image/png', blob = new Blob([buf], { type: mime }), url = URL.createObjectURL(blob);
+    const dims = await new Promise((res) => { const im = new Image(); im.onload = () => res([im.naturalWidth, im.naturalHeight]); im.onerror = () => res(null); im.src = url; });
+    if (!dims) { URL.revokeObjectURL(url); toast('Não consegui ler "' + f.name + '".'); continue; }
+    const id = board.nextId++; board.images[id] = { id, name: f.name, mime, buf, w: dims[0], h: dims[1], url }; added.push({ id, w: dims[0], h: dims[1], name: baseName(f.name) });
+  }
+  if (!added.length) return;
+  const v = view(), W = stage.clientWidth / v.z, H = stage.clientHeight / v.z, c = toWorld(stage.clientWidth / 2, stage.clientHeight / 2);
+  const s = Math.min(1, (W * 0.4) / Math.max(...added.map((a) => a.w)), (H * 0.5) / Math.max(...added.map((a) => a.h)));
+  const gap = 24 / v.z, cols = Math.ceil(Math.sqrt(added.length)); let x = 0, y = 0, rowH = 0, col = 0, maxX = 0; const place = [];
+  for (const a of added) { if (col === cols) { col = 0; x = 0; y += rowH + gap; rowH = 0; } place.push([x, y, a]); x += a.w * s + gap; rowH = Math.max(rowH, a.h * s); maxX = Math.max(maxX, x - gap); col++; }
+  const totW = maxX, totH = y + rowH; let z = board.items.length ? Math.max(...board.items.map((i) => i.z)) : 0; sel = new Set();
+  for (const [px, py, a] of place) { const it = { id: board.nextId++, type: 'image', name: a.name, img: a.id, m: [s, 0, 0, s, c[0] - totW / 2 + px, c[1] - totH / 2 + py], w: a.w, h: a.h, z: ++z, opacity: 1, locked: false, clip: null }; board.items.push(it); makeEl(it); sel.add(it.id); }
+  updateChrome(); markDirty();
+}
+async function handleFiles(list) {
+  const files = [...list]; const imgs = [];
+  for (const f of files) {
+    if (/\.pur$/i.test(f.name)) await importPur(f);
+    else if (/\.json$/i.test(f.name)) await importBackup(f);
+    else imgs.push(f);
+  }
+  if (imgs.length) await addImages(imgs);
+}
+$('#f-open').addEventListener('change', (e) => handleFiles(e.target.files));
+$('#f-img').addEventListener('change', (e) => addImages(e.target.files));
+let dragN = 0;
+document.addEventListener('dragenter', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { dragN++; $('#drop').classList.add('on'); } });
+document.addEventListener('dragleave', () => { dragN = Math.max(0, dragN - 1); if (!dragN) $('#drop').classList.remove('on'); });
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('drop', (e) => { e.preventDefault(); dragN = 0; $('#drop').classList.remove('on'); if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+document.addEventListener('paste', (e) => { const fs = [...(e.clipboardData ? e.clipboardData.files : [])]; if (fs.length) { e.preventDefault(); addImages(fs); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+window.addEventListener('pagehide', saveNow);
+window.addEventListener('resize', () => { if (board) drawSel(); });
+
+/* ================= Painel de boards ================= */
+const sheet = $('#sheet'), panel = $('#panel');
+const fmtDate = (t) => { try { return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(t); } catch (e) { return ''; } };
+const icon = (n) => '<svg class="i"><use href="#i-' + n + '"/></svg>';
+let confirmDel = null, renaming = null;
+async function openSheet() { sheet.classList.add('on'); await saveNow(); renderSheet(); }
+function closeSheet() { sheet.classList.remove('on'); confirmDel = renaming = null; }
+sheet.addEventListener('pointerdown', (e) => { if (e.target === sheet) closeSheet(); });
+async function renderSheet() {
+  const list = (await store.list()).sort((a, b) => b.updated - a.updated);
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let h = '<div style="display:flex;align-items:center;justify-content:space-between"><h2>Meus boards</h2><button class="btn" data-s="close" aria-label="Fechar">' + icon('close') + '</button></div>';
+  if (!store.db) h += '<p class="hint">Este navegador não deixa salvar boards. Exporte um backup para não perder o trabalho.</p>';
+  if (!list.length && store.db) h += '<p class="hint">Nenhum board salvo ainda. Abra um .pur ou adicione imagens para começar.</p>';
+  for (const b of list) {
+    const cur = board && b.id === board.id;
+    h += '<div class="row' + (cur ? ' cur' : '') + '">' + (renaming === b.id ? '<input id="rn" value="' + esc(b.name) + '" aria-label="Nome do board">' + '<button class="btn" data-s="rnok" data-id="' + b.id + '" aria-label="Salvar nome">OK</button>'
+      : '<button class="nm" data-s="open" data-id="' + b.id + '">' + esc(b.name) + '<small>' + (b.count || 0) + ' itens · ' + fmtDate(b.updated) + '</small></button>' + '<button class="btn" data-s="rename" data-id="' + b.id + '" aria-label="Renomear">' + icon('edit') + '</button>')
+      + '<button class="btn danger" data-s="del" data-id="' + b.id + '" aria-label="Apagar board">' + (confirmDel === b.id ? '<span class="t">Apagar?</span>' : icon('trash')) + '</button></div>';
+  }
+  h += '<div class="cta"><button class="btn" data-s="new">' + icon('plus') + 'Novo board</button><button class="btn primary" data-s="pur" style="background:var(--accent);color:var(--accent-fg)">' + icon('open') + 'Abrir .pur</button>' + (board && board.id !== 'tmp' ? '<button class="btn" data-s="export">' + icon('down') + 'Backup do board atual</button>' : '') + '</div>';
+  h += '<p class="hint">Os boards ficam salvos só neste navegador. Se você limpar os dados do Safari eles somem, então guarde seus .pur originais e faça um backup de vez em quando.</p>';
+  panel.innerHTML = h; const rn = $('#rn'); if (rn) { rn.focus(); rn.select(); rn.addEventListener('keydown', (e) => { if (e.key === 'Enter') doRename(renaming, rn.value); }); }
+}
+async function doRename(id, name) {
+  name = (name || '').trim() || 'Sem nome';
+  if (board && board.id === id) { board.name = name; updateChrome(); await saveNow(); }
+  else { const b = await store.load(id); if (b) { b.name = name; await store.save(b); } }
+  renaming = null; renderSheet();
+}
+panel.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-s]'); if (!b) return; const id = b.dataset.id, s = b.dataset.s;
+  if (s === 'close') closeSheet();
+  else if (s === 'open') { if (board && board.id === id) closeSheet(); else openBoard(id); }
+  else if (s === 'new') { await saveNow(); newBoard('Novo board'); closeSheet(); }
+  else if (s === 'pur') { closeSheet(); act.open(); }
+  else if (s === 'export') exportBackup();
+  else if (s === 'rename') { renaming = id; renderSheet(); }
+  else if (s === 'rnok') doRename(id, $('#rn').value);
+  else if (s === 'del') {
+    if (confirmDel !== id) { confirmDel = id; renderSheet(); return; }
+    await store.remove(id); confirmDel = null;
+    if (board && board.id === id) { pref.set('last', ''); newBoard('Novo board'); }
+    renderSheet();
+  }
+});
+
+/* ================= Início ================= */
+(async function start() {
+  setTone(pref.get('tone') || 'auto');
+  board = { id: 'tmp', name: 'Boards', items: [], images: {}, view: { x: stage.clientWidth / 2, y: stage.clientHeight / 2, z: 1 }, nextId: 1 };
+  rebuildAll();
+  window.__mesa = { get board() { return board; }, importPur, handleFiles };
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* ok */ }
+  const opened = await Promise.race([store.open(), new Promise((r) => setTimeout(() => r(false), 3000))]);
+  const last = pref.get('last');
+  if (opened && store.db && last) {
+    try { const b = await store.load(last); if (b && board.id === 'tmp' && !board.items.length) { board = b; rebuildAll(); if (b.items.length && (!b.view || !isFinite(b.view.z))) fitAll(); } } catch (err) { /* começa vazio */ }
+  }
+})();
+})();
+
+</script>
+<script>
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+</script>
+</body>
+</html>
