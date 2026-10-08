@@ -102,10 +102,35 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 #drop { position: absolute; inset: 8px; z-index: 15; display: none; border: 3px dashed var(--accent); border-radius: 18px; pointer-events: none; background: color-mix(in srgb, var(--accent) 10%, transparent); }
 #drop.on { display: block; }
 @media (prefers-reduced-motion: no-preference) { #toast { animation: up .18s ease-out; } @keyframes up { from { opacity: 0; margin-top: -6px; } } }
-</style>
-</head>
-<body>
 
+#loading { position: absolute; z-index: 25; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(440px, calc(100% - 28px)); background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+#loading .lhead { display: flex; align-items: center; gap: 10px; padding: 12px 12px 4px 18px; }
+#loading .lhead b { flex: 1; min-width: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#lt-pill { font-size: 12px; background: var(--accent); color: var(--accent-fg); border-radius: 99px; padding: 3px 10px; white-space: nowrap; }
+#loading .lbody { padding: 6px 18px 16px; display: grid; gap: 10px; }
+#lt-file { color: var(--ui-muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#loading .lbar { height: 10px; border-radius: 99px; background: var(--ui-line); overflow: hidden; }
+#lt-bar { display: block; height: 100%; width: 4%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+#loading.indet #lt-bar { width: 30% !important; animation: indet 1.1s ease-in-out infinite alternate; }
+@keyframes indet { from { margin-left: 0; } to { margin-left: 70%; } }
+#loading .lrow { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+#loading.min { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%); }
+#loading.min .lbody { display: none; }
+#loading.min .lhead { padding-bottom: 12px; }
+#linkbar { position: absolute; z-index: 12; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 74px); max-width: calc(100% - 24px); display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; font-size: 13px; background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: 14px; box-shadow: var(--shadow); }
+#linkbar .btn { border: 1px solid var(--ui-line); white-space: nowrap; }
+.item.ph img { opacity: 0; }
+.item canvas.gifc { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.item.gp img { visibility: hidden; }
+#gifbar { left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); width: min(520px, calc(100% - 24px)); gap: 10px; padding: 6px 14px 6px 6px; }
+#gifbar input[type=range] { flex: 1; min-width: 0; height: 32px; accent-color: var(--accent); touch-action: none; }
+#g-pos.err { color: var(--danger); white-space: normal; }
+#g-pos { min-width: 74px; text-align: right; font-size: 13px; color: var(--ui-muted); font-variant-numeric: tabular-nums; }
+.item.ph { background: linear-gradient(100deg, #8884 30%, #fff3 50%, #8884 70%) 0 0/300% 100%; }
+.item.loading { outline: 3px solid var(--accent); outline-offset: -3px; }
+@media (prefers-reduced-motion: no-preference) { .item.ph { animation: shim 1.6s linear infinite; } @keyframes shim { to { background-position: -300% 0; } } }
+@media (prefers-reduced-motion: reduce) { #loading.indet #lt-bar { animation: none; } }
+</style>
 
 <div id="stage" aria-label="Quadro de referências">
   <div id="world"></div>
@@ -147,6 +172,19 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
   <button class="btn danger" data-act="del" aria-label="Apagar"><svg class="i"><use href="#i-trash"/></svg><span class="t hide-s">Apagar</span></button>
 </div>
 
+<div id="loading" hidden role="status" aria-live="polite">
+  <div class="lhead"><b id="lt-title">Carregando</b><span id="lt-pill"></span><button class="btn" data-big="min" aria-label="Minimizar">—</button></div>
+  <div class="lbody">
+    <div id="lt-file"></div>
+    <div class="lbar"><i id="lt-bar"></i></div>
+    <div class="lrow"><span id="lt-count"></span><span id="lt-bytes"></span><span id="lt-eta"></span></div>
+    <p class="hint" style="margin:0">Pode usar o board enquanto carrega. Mantenha o Puryta aberto e o iPad ligado; a tela fica acesa sozinha.</p>
+    <div class="cta"><button class="btn" data-big="cancel">Cancelar</button></div>
+  </div>
+</div>
+<div class="bar" id="gifbar" hidden role="toolbar" aria-label="GIF"><button class="btn" id="g-play" aria-label="Tocar"><svg class="i"><use href="#i-play"/></svg></button><input type="range" id="g-seek" min="0" max="1000" value="0" step="1" aria-label="Quadro do GIF"><span id="g-pos">GIF</span></div>
+<div class="bar" id="linkbar" hidden><span id="linktxt"></span><button class="btn" data-act="link">Vincular arquivo</button></div>
+<input type="file" id="f-link" hidden>
 <div id="sheet"><div id="panel" role="dialog" aria-label="Meus boards"></div></div>
 <div id="toast" role="status"></div>
 <div id="drop"></div>
@@ -154,6 +192,8 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 <input type="file" id="f-img" hidden multiple accept="image/*">
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z" fill="currentColor"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke-width="3"/></symbol>
 <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
 <symbol id="i-addimg" viewBox="0 0 24 24"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M3 16l4-4 4 4 2-2 4 4"/><path d="M20 3v6M17 6h6"/></symbol>
 <symbol id="i-boards" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></symbol>
@@ -387,27 +427,24 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 
   const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml' };
 
-  /* ---------- 5. API principal ---------- */
-  function parsePur(arrayBuffer) {
-    const file = new Uint8Array(arrayBuffer);
-    const db = rebuildDatabase(file);
-    const sql = SqliteReader(db);
+  /* ---------- 5. Montagem do resultado (compartilhada pelos dois leitores) ---------- */
+  // R: linhas já lidas de cada tabela. Em imagens, "data" pode ser bytes ou um descritor {lazy:true,...} (leitura em partes).
+  function assemble(R) {
     const warnings = [];
-
-    const meta = sql.rows('metadata')[0] || {};
+    const meta = (R.metadata && R.metadata[0]) || {};
     const images = {};
-    for (const r of sql.rows('images')) {
+    for (const r of R.images) {
       const fmt = (asString(r.format) || 'png').toLowerCase();
+      const lazy = r.data && r.data.lazy ? r.data : null;
       images[r.id] = { id: r.id, name: (asString(r.source) || '').split(/[\\/]/).pop(), format: fmt, mime: MIME[fmt] || 'application/octet-stream',
-                       bytes: asBytes(r.data), w: r.width, h: r.height };
+                       bytes: lazy ? null : asBytes(r.data), lazy, w: r.width, h: r.height, checksum: asString(r.checksum) };
     }
     const base = {};
-    for (const r of sql.rows('items')) base[r.id] = { id: r.id, parent: r.parent, name: asString(r.name) || '', t: readTransform(r.transform), z: r.z || 0, opacity: r.opacity == null ? 1 : r.opacity, locked: !!r.locked };
-    const imgItems = {}; for (const r of sql.rows('items_images')) imgItems[r.id] = r;
-    const notes = {}; for (const r of sql.rows('items_notes')) notes[r.id] = r;
-    const groups = {}; for (const r of sql.rows('items_groups')) groups[r.id] = r;
-    const drawings = sql.rows('items_drawings');
-    if (drawings.length) warnings.push(drawings.length + ' desenho(s) à mão livre não foram importados (ainda não suportado).');
+    for (const r of R.items) base[r.id] = { id: r.id, parent: r.parent, name: asString(r.name) || '', t: readTransform(r.transform), z: r.z || 0, opacity: r.opacity == null ? 1 : r.opacity, locked: !!r.locked };
+    const imgItems = {}; for (const r of R.items_images) imgItems[r.id] = r;
+    const notes = {}; for (const r of R.items_notes) notes[r.id] = r;
+    const groups = {}; for (const r of R.items_groups) groups[r.id] = r;
+    if (R.items_drawings.length) warnings.push(R.items_drawings.length + ' desenho(s) à mão livre não foram importados (ainda não suportado).');
 
     // matriz do item até a cena (percorre os grupos pais)
     const worldOf = (it) => { let m = it.t, p = it.parent, g = 0; while (p != null && p >= 0 && base[p] && g++ < 64) { m = mul(m, base[p].t); p = base[p].parent; } return m; };
@@ -417,14 +454,16 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
       const it = base[id];
       if (imgItems[id]) {
         const ii = imgItems[id], img = images[ii.image];
-        if (!img || !img.bytes) { warnings.push('Imagem ausente no item ' + (it.name || id)); continue; }
+        if (!img || (!img.bytes && !img.lazy)) { warnings.push('Imagem ausente no item ' + (it.name || id)); continue; }
         const m = mul(readTransform(ii.image_transform), worldOf(it));
         const pb = readPathBounds(ii.image_bounds);
+        const iw = img.w || (pb ? Math.round(pb.w) : 0) || 1000, ih = img.h || (pb ? Math.round(pb.h) : 0) || 1000;
+        if (!img.w) { img.w = iw; img.h = ih; }
         let clip = null;
         if (pb) { const T = readTransform(ii.image_transform); // caixa de corte na coordenada do item -> pixels da imagem
           const x0 = pb.x - T[4], y0 = pb.y - T[5];
-          if (Math.abs(x0) > 0.5 || Math.abs(y0) > 0.5 || Math.abs(pb.w - img.w) > 0.5 || Math.abs(pb.h - img.h) > 0.5) clip = { x: x0, y: y0, w: pb.w, h: pb.h }; }
-        items.push({ id: +id, type: 'image', name: it.name, img: ii.image, m, w: img.w, h: img.h, z: it.z, opacity: it.opacity, locked: it.locked, clip, playing: ii.playback_state });
+          if (Math.abs(x0) > 0.5 || Math.abs(y0) > 0.5 || Math.abs(pb.w - iw) > 0.5 || Math.abs(pb.h - ih) > 0.5) clip = { x: x0, y: y0, w: pb.w, h: pb.h }; }
+        items.push({ id: +id, type: 'image', name: it.name, img: ii.image, m, w: iw, h: ih, z: it.z, opacity: it.opacity, locked: it.locked, clip, playing: ii.playback_state });
       } else if (notes[id]) {
         const n = notes[id];
         items.push({ id: +id, type: 'note', name: it.name, m: worldOf(it), z: it.z, opacity: it.opacity, locked: it.locked, text: asString(n.text) || '',
@@ -438,8 +477,377 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
              thumbnail: asBytes(meta.thumbnail), sourcePath: asString(meta.last_load_path), warnings };
   }
 
-  const api = { parsePur, rebuildDatabase, SqliteReader, mul };
+  const TABLES = ['metadata', 'images', 'items', 'items_images', 'items_notes', 'items_groups', 'items_drawings'];
+  function parsePur(arrayBuffer) {
+    const file = new Uint8Array(arrayBuffer);
+    const db = rebuildDatabase(file);
+    const sql = SqliteReader(db);
+    const R = {}; for (const n of TABLES) R[n] = sql.rows(n);
+    return assemble(R);
+  }
+
+  const api = { parsePur, assemble, rebuildDatabase, SqliteReader, mul, TABLES, _: { dvOf, asString, asBytes } };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PurParser = api;
+})(typeof self !== 'undefined' ? self : this);
+
+/* Leitor assíncrono de .pur 2.x para arquivos enormes (gigabytes).
+ *
+ * Em vez de carregar o arquivo inteiro, lê só as páginas do SQLite que precisa, usando File.slice().
+ * Mesma estrutura do leitor em memória (parser.js): o início do banco foi sobrescrito por um cabeçalho do
+ * PureRef e os bytes originais ficam no FINAL do arquivo (offset do final = u32 em file[18..22]).
+ *
+ * Imagens grandes ficam em "páginas de overflow" encadeadas. Aqui a tabela images é lida em modo preguiçoso:
+ * cada linha traz um descritor {lazy:true, len, head, ov, ...} e os bytes só são lidos quando alguém pede
+ * (readParts), em pedaços grandes e quase sequenciais.
+ */
+(function (root) {
+  'use strict';
+  const MAGIC = 'SQLite format 3\0';
+  const td = new TextDecoder('utf-8');
+  const u32 = (b, o) => ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0;
+  const u16 = (b, o) => (b[o] << 8) | b[o + 1];
+
+  function varint(buf, o) {
+    let v = 0;
+    for (let i = 0; i < 8; i++) { const b = buf[o + i]; v = v * 128 + (b & 0x7f); if (!(b & 0x80)) return [v, o + i + 1]; }
+    return [v * 256 + buf[o + 8], o + 9];
+  }
+
+  class Cancelled extends Error { constructor() { super('cancelado'); this.name = 'Cancelled'; } }
+
+  async function open(file) {
+    const head = new Uint8Array(await file.slice(0, 64).arrayBuffer());
+    const magicAt = async (o) => o >= 0 && o + 16 <= file.size && String.fromCharCode(...new Uint8Array(await file.slice(o, o + 16).arrayBuffer())) === MAGIC;
+    let dbOff = u32(head, 18), H, dbSize, found = false;
+    // Em arquivos acima de 4 GB o deslocamento não cabe em 32 bits: testa também valores "somados" e, por fim,
+    // procura o início do trecho original (começa com a assinatura do SQLite) no final do arquivo.
+    const cands = [dbOff, dbOff + 4294967296, dbOff + 2 * 4294967296, dbOff + 3 * 4294967296];
+    const hi = u32(head, 14); if (hi) cands.unshift(hi * 4294967296 + dbOff);
+    for (const c of cands) if (c > 0 && c < file.size && (await magicAt(c))) { dbOff = c; found = true; break; }
+    if (!found && !(await magicAt(0))) {
+      const win = Math.min(file.size, 4 * 1048576), base = file.size - win, tail = new Uint8Array(await file.slice(base, file.size).arrayBuffer()), sig = Array.from(MAGIC, (ch) => ch.charCodeAt(0));
+      for (let i = 0; i + 16 <= tail.length && !found; i++) { if (tail[i] !== 0x53) continue; let ok = true; for (let k = 1; k < 16; k++) if (tail[i + k] !== sig[k]) { ok = false; break; } if (ok) { dbOff = base + i; found = true; } }
+    }
+    if (found) { H = file.size - dbOff; dbSize = dbOff; }
+    else if (await magicAt(0)) { H = 0; dbSize = file.size; dbOff = file.size; }
+    else throw new Error('Este não parece ser um .pur do PureRef 2.x (talvez seja um arquivo da versão 1.x).');
+
+    // bytes [off, off+len) do banco já "desfeito": o início vem do final do arquivo
+    async function read(off, len) {
+      if (off >= dbSize) return new Uint8Array(0);
+      len = Math.min(len, dbSize - off);
+      if (H === 0 || off >= H) return new Uint8Array(await file.slice(off, off + len).arrayBuffer());
+      const n1 = Math.min(len, H - off);
+      const a = new Uint8Array(await file.slice(dbOff + off, dbOff + off + n1).arrayBuffer());
+      if (n1 === len) return a;
+      const b = new Uint8Array(await file.slice(H, H + (len - n1)).arrayBuffer());
+      const out = new Uint8Array(len); out.set(a, 0); out.set(b, n1); return out;
+    }
+
+    const h0 = await read(0, 100);
+    let ps = u16(h0, 16); if (ps === 1) ps = 65536;
+    const U = ps - h0[20];
+    if (u32(h0, 56) > 1) throw new Error('Codificação de texto do banco não suportada.');
+
+    const cache = new Map();
+    async function page(n) {
+      let p = cache.get(n);
+      if (p) { cache.delete(n); cache.set(n, p); return p; }
+      p = await read((n - 1) * ps, ps); cache.set(n, p);
+      if (cache.size > 1024) cache.delete(cache.keys().next().value);
+      return p;
+    }
+
+    function cellInfo(pg, o) {
+      let P, rowid; [P, o] = varint(pg, o); [rowid, o] = varint(pg, o);
+      const X = U - 35; let local = P, ov = 0;
+      if (P > X) { const M = Math.floor(((U - 12) * 32) / 255) - 23, K = M + ((P - M) % (U - 4)); local = K <= X ? K : M; ov = u32(pg, o + local); }
+      return { P, rowid, local, start: o, ov, hasOv: P > X };
+    }
+
+    async function walk(pgno, cb) {
+      const pg = await page(pgno), base = pgno === 1 ? 100 : 0, type = pg[base], n = u16(pg, base + 3);
+      if (type === 0x0d) { for (let i = 0; i < n; i++) await cb(pg, u16(pg, base + 8 + i * 2)); }
+      else if (type === 0x05) {
+        const kids = []; for (let i = 0; i < n; i++) kids.push(u32(pg, u16(pg, base + 12 + i * 2))); kids.push(u32(pg, base + 8));
+        for (const k of kids) await walk(k, cb);
+      } else throw new Error('Página inesperada no banco (tipo ' + type + ').');
+    }
+
+    async function fullPayload(pg, info) {
+      if (!info.hasOv) return pg.subarray(info.start, info.start + info.P);
+      const out = new Uint8Array(info.P); out.set(pg.subarray(info.start, info.start + info.local), 0);
+      let got = info.local, ov = info.ov;
+      while (got < info.P && ov) { const p = await read((ov - 1) * ps, ps), take = Math.min(U - 4, info.P - got); out.set(p.subarray(4, 4 + take), got); got += take; ov = u32(p, 0); }
+      return out;
+    }
+
+    // lazy: informações da célula quando só temos a parte local do conteúdo
+    function decodeRecord(p, lazy) {
+      let [hlen, o] = varint(p, 0); const types = [];
+      while (o < hlen) { let t; [t, o] = varint(p, o); types.push(t); }
+      const dv = new DataView(p.buffer, p.byteOffset, p.byteLength), vals = []; let q = hlen;
+      for (const t of types) {
+        if (t === 0) vals.push(null);
+        else if (t >= 1 && t <= 6) {
+          const n = [0, 1, 2, 3, 4, 6, 8][t]; if (q + n > p.length) { vals.push(undefined); break; }
+          let v = 0n; for (let i = 0; i < n; i++) v = (v << 8n) | BigInt(p[q + i]);
+          vals.push(Number(BigInt.asIntN(n * 8, v))); q += n;
+        } else if (t === 7) { if (q + 8 > p.length) { vals.push(undefined); break; } vals.push(dv.getFloat64(q, false)); q += 8; }
+        else if (t === 8) vals.push(0); else if (t === 9) vals.push(1);
+        else if (t >= 12) {
+          const n = t % 2 === 0 ? (t - 12) / 2 : (t - 13) / 2;
+          if (q + n > p.length) {
+            if (!lazy || t % 2 === 1) throw new Error('Linha do banco maior que o esperado.');
+            vals.push({ lazy: true, len: n, start: q, head: p.slice(q), ov: lazy.ov, P: lazy.P, local: lazy.local }); break; // colunas seguintes ficam sem valor
+          }
+          const bytes = p.subarray(q, q + n); q += n; vals.push(t % 2 === 0 ? bytes.slice() : { text: bytes.slice() });
+        } else throw new Error('Tipo de coluna inválido.');
+      }
+      return vals;
+    }
+
+    const tables = {};
+    await walk(1, async (pg, o) => {
+      const info = cellInfo(pg, o), r = decodeRecord(await fullPayload(pg, info), null);
+      if (!r[0] || !r[0].text || td.decode(r[0].text) !== 'table') return;
+      const name = td.decode(r[1].text), sql = td.decode(r[4].text), inner = sql.slice(sql.indexOf('(') + 1, sql.lastIndexOf(')'));
+      const cols = []; let depth = 0, cur = '';
+      for (const ch of inner) { if (ch === '(') depth++; if (ch === ')') depth--; if (ch === ',' && depth === 0) { cols.push(cur); cur = ''; } else cur += ch; }
+      cols.push(cur);
+      tables[name] = { root: r[3], cols: cols.map((c) => c.trim().split(/\s+/)[0].replace(/["`\[\]]/g, '')), pk: cols.findIndex((c) => /INTEGER\s+PRIMARY\s+KEY/i.test(c)) };
+    });
+
+    async function rows(name, lazy) {
+      const t = tables[name]; if (!t) return []; const out = [];
+      await walk(t.root, async (pg, o) => {
+        const info = cellInfo(pg, o), useLazy = !!(lazy && info.hasOv);
+        const payload = useLazy ? pg.subarray(info.start, info.start + info.local) : await fullPayload(pg, info);
+        const vals = decodeRecord(payload, useLazy ? info : null), row = {};
+        t.cols.forEach((c, i) => { let v = vals[i] === undefined ? null : vals[i]; if (i === t.pk && v === null) v = info.rowid; row[c] = v; });
+        out.push(row);
+      });
+      return out;
+    }
+
+    // Lê os bytes de um blob preguiçoso em pedaços (Uint8Array[]), seguindo a cadeia de overflow.
+    // Lê blocos grandes assumindo páginas seguidas e confere o ponteiro "próxima página" de cada uma.
+    async function readParts(desc, onBytes, cancelled, sink) {
+      const per = U - 4, parts = [];
+      const headLen = Math.min(desc.len, desc.head.length);
+      parts.push(desc.head.subarray(0, headLen)); if (onBytes) onBytes(headLen);
+      if (sink) await sink(parts.pop());
+      let remaining = desc.len - headLen, pg = desc.ov, chunk = 256;
+      while (remaining > 0) {
+        if (cancelled && cancelled()) throw new Cancelled();
+        if (!pg) throw new Error('A imagem está incompleta dentro do arquivo.');
+        const want = Math.min(chunk, Math.ceil(remaining / per));
+        const buf = await read((pg - 1) * ps, want * ps), got = Math.floor(buf.length / ps);
+        if (!got) throw new Error('A imagem está incompleta dentro do arquivo.');
+        const first = parts.length; let jumped = false, nextPg = 0;
+        for (let i = 0; i < got; i++) {
+          const o = i * ps, next = u32(buf, o), take = Math.min(per, remaining);
+          parts.push(buf.subarray(o + 4, o + 4 + take)); remaining -= take; if (onBytes) onBytes(take);
+          if (remaining <= 0) break;
+          if (next !== pg + i + 1) { nextPg = next; jumped = true; break; }
+        }
+        if (sink) { const cp = parts.splice(first); for (const x of cp) await sink(x); }
+        if (remaining <= 0) break;
+        if (jumped) { for (let j = first; j < parts.length; j++) parts[j] = parts[j].slice(); pg = nextPg; chunk = Math.max(8, chunk >> 2); }
+        else { pg += got; chunk = Math.min(512, chunk * 2); }
+      }
+      return parts;
+    }
+
+    return { size: file.size, dbSize, pageSize: ps, tables, rows, readParts };
+  }
+
+  // Dimensões lidas do começo do arquivo de imagem (sem decodificar). Devolve [w,h] ou null.
+  function dimsFromHead(h) {
+    if (!h || h.length < 24) return null;
+    if (h[0] === 0x47 && h[1] === 0x49 && h[2] === 0x46) return [h[6] | (h[7] << 8), h[8] | (h[9] << 8)];
+    if (h[0] === 0x89 && h[1] === 0x50) return [u32(h, 16), u32(h, 20)];
+    if (h[0] === 0xff && h[1] === 0xd8) {
+      let i = 2;
+      while (i + 9 < h.length) {
+        if (h[i] !== 0xff) { i++; continue; }
+        const m = h[i + 1];
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return [u16(h, i + 7), u16(h, i + 5)];
+        if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+        i += 2 + u16(h, i + 2);
+      }
+    }
+    return null;
+  }
+
+  const api = { open, dimsFromHead, Cancelled };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.BigFile = api;
+})(typeof self !== 'undefined' ? self : this);
+
+/* Decodificador de GIF animado (sem bibliotecas). Permite ir direto a qualquer quadro, o que o navegador não deixa fazer com <img>. */
+(function (root) {
+  'use strict';
+  function parse(b) {
+    if (b.length < 13 || b[0] !== 0x47 || b[1] !== 0x49 || b[2] !== 0x46) throw new Error('não é um GIF');
+    const W = b[6] | (b[7] << 8), H = b[8] | (b[9] << 8), fl = b[10]; let p = 13, gct = null;
+    if (fl & 0x80) { const n = 2 << (fl & 7); gct = b.subarray(p, p + n * 3); p += n * 3; }
+    const frames = []; let gce = null;
+    const skip = () => { while (p < b.length) { const n = b[p++]; if (!n) break; p += n; } };
+    while (p < b.length) {
+      const t = b[p++];
+      if (t === 0x3b) break;
+      if (t === 0x21) {
+        const label = b[p++];
+        if (label === 0xf9) { const f = b[p + 1]; gce = { disp: (f >> 2) & 7, trans: f & 1 ? b[p + 4] : -1, delay: b[p + 2] | (b[p + 3] << 8) }; }
+        skip(); continue;
+      }
+      if (t === 0x2c) {
+        const x = b[p] | (b[p + 1] << 8), y = b[p + 2] | (b[p + 3] << 8), w = b[p + 4] | (b[p + 5] << 8), h = b[p + 6] | (b[p + 7] << 8), f = b[p + 8]; p += 9;
+        let lct = null; if (f & 0x80) { const n = 2 << (f & 7); lct = b.subarray(p, p + n * 3); p += n * 3; }
+        const min = b[p++], start = p; skip();
+        const d = gce ? gce.delay : 10;
+        frames.push({ x, y, w, h, il: !!(f & 0x40), pal: lct || gct, min, start, disp: gce ? gce.disp : 0, trans: gce ? gce.trans : -1, delay: (d <= 1 ? 10 : d) * 10 });
+        gce = null; continue;
+      }
+      break;
+    }
+    if (!frames.length || !W || !H) throw new Error('GIF sem quadros');
+    return { W, H, frames };
+  }
+  function lzw(b, start, min, npix) {
+    const out = new Uint8Array(npix), clear = 1 << min, eoi = clear + 1;
+    const prefix = new Uint16Array(4096), suffix = new Uint8Array(4096), stack = new Uint8Array(4097);
+    for (let i = 0; i < clear; i++) suffix[i] = i;
+    let size = min + 1, mask = (1 << size) - 1, next = eoi + 1, p = start, left = 0, datum = 0, bits = 0, old = -1, first = 0, o = 0;
+    while (o < npix) {
+      while (bits < size) { if (!left) { left = b[p++]; if (!left) return out; } datum |= b[p++] << bits; left--; bits += 8; }
+      let code = datum & mask; datum >>= size; bits -= size;
+      if (code === clear) { size = min + 1; mask = (1 << size) - 1; next = eoi + 1; old = -1; continue; }
+      if (code === eoi) break;
+      if (old === -1) { out[o++] = suffix[code]; old = code; first = code; continue; }
+      const inCode = code; let top = 0;
+      if (code >= next) { stack[top++] = first; code = old; }
+      while (code >= clear) { stack[top++] = suffix[code]; code = prefix[code]; }
+      first = suffix[code]; stack[top++] = first;
+      if (next < 4096) { prefix[next] = old; suffix[next] = first; next++; if ((next & mask) === 0 && next < 4096) { size++; mask = (1 << size) - 1; } }
+      old = inCode;
+      while (top > 0 && o < npix) out[o++] = stack[--top];
+    }
+    return out;
+  }
+  const IL = (h) => { const r = []; for (const [s, st] of [[0, 8], [4, 8], [2, 4], [1, 2]]) for (let y = s; y < h; y += st) r.push(y); return r; };
+
+  class Player {
+    constructor(bytes, init) {
+      const g = init || parse(bytes); this.b = bytes; this.W = g.W; this.H = g.H; this.frames = g.frames; this.n = g.frames.length;
+      this.px = new Uint8ClampedArray(this.W * this.H * 4); this.idx = -1; this.saved = null; this.ck = new Map();
+      const per = this.W * this.H * 4, cap = Math.max(2, Math.floor(120e6 / per)); this.K = Math.max(1, Math.ceil(this.n / cap));
+    }
+    reset() { this.px.fill(0); this.idx = -1; this.saved = null; }
+    step() {
+      const i = this.idx + 1, W = this.W, H = this.H, px = this.px;
+      if (i > 0) {
+        const pf = this.frames[i - 1];
+        if (pf.disp === 2) { for (let y = pf.y; y < Math.min(H, pf.y + pf.h); y++) { const a = (y * W + pf.x) * 4, e = (y * W + Math.min(W, pf.x + pf.w)) * 4; px.fill(0, a, e); } }
+        else if (pf.disp === 3 && this.saved) px.set(this.saved);
+      }
+      const f = this.frames[i];
+      if (f.disp === 3) this.saved = px.slice();
+      const ix = lzw(f.buf || this.b, f.buf ? 0 : f.start, f.min, f.w * f.h), pal = f.pal || new Uint8Array(768), rows = f.il ? IL(f.h) : null;
+      for (let r = 0; r < f.h; r++) {
+        const y = f.y + (rows ? rows[r] : r); if (y >= H) continue;
+        for (let c = 0; c < f.w; c++) {
+          const x = f.x + c; if (x >= W) break;
+          const v = ix[r * f.w + c]; if (v === f.trans) continue;
+          const o = (y * W + x) * 4, q = v * 3; px[o] = pal[q]; px[o + 1] = pal[q + 1]; px[o + 2] = pal[q + 2]; px[o + 3] = 255;
+        }
+      }
+      this.idx = i;
+      if (!this.noCk && i % this.K === 0 && !this.ck.has(i)) this.ck.set(i, { px: px.slice(), saved: this.saved });
+    }
+    seek(i) {
+      i = Math.max(0, Math.min(this.n - 1, i | 0)); if (i === this.idx) return;
+      let c = -1; for (const k of this.ck.keys()) if (k <= i && k > c) c = k;
+      if (i < this.idx || c > this.idx) { if (c >= 0) { const s = this.ck.get(c); this.px.set(s.px); this.saved = s.saved; this.idx = c; } else this.reset(); }
+      while (this.idx < i) this.step();
+    }
+  }
+  // Primeiro quadro como imagem parada (canvas já reduzido)
+  function still(bytes, maxSide) {
+    const pl = new Player(bytes); pl.seek(0);
+    const c = document.createElement('canvas'); c.width = pl.W; c.height = pl.H; c.getContext('2d').putImageData(new ImageData(pl.px, pl.W, pl.H), 0, 0);
+    const sc = Math.min(1, maxSide / Math.max(pl.W, pl.H)); let out = c;
+    if (sc < 1) { out = document.createElement('canvas'); out.width = Math.max(1, Math.round(pl.W * sc)); out.height = Math.max(1, Math.round(pl.H * sc)); out.getContext('2d').drawImage(c, 0, 0, out.width, out.height); c.width = c.height = 0; }
+    return new Promise((res, rej) => out.toBlob((b) => (b ? res({ blob: b, w: pl.W, h: pl.H }) : rej(new Error('sem imagem'))), 'image/png'));
+  }
+
+  // ---- Prévia de GIFs gigantes: lê o arquivo em fluxo (sem guardá-lo), decodifica quadro a quadro e guarda cada um em tamanho pequeno ----
+  function makeReader(pull) {
+    const chunks = []; let off = 0, avail = 0, ended = false;
+    async function fill(n) { while (avail < n && !ended) { const c = await pull(); if (!c) { ended = true; break; } if (c.length) { chunks.push(c); avail += c.length; } } if (avail < n) throw new Error('o GIF está incompleto'); }
+    async function byte() { await fill(1); const c = chunks[0], v = c[off++]; avail--; if (off >= c.length) { chunks.shift(); off = 0; } return v; }
+    async function take(n) {
+      await fill(n); const out = new Uint8Array(n); let o = 0;
+      while (o < n) { const c = chunks[0], k = Math.min(c.length - off, n - o); out.set(c.subarray(off, off + k), o); o += k; off += k; avail -= k; if (off >= c.length) { chunks.shift(); off = 0; } }
+      return out;
+    }
+    return { byte, take };
+  }
+  function shrink(px, W, H, out, tw, th, flat) {
+    const sx = W / tw, sy = H / th;
+    for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+      let r = 0, g = 0, b = 0, a = 0;
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) {
+        const X = Math.min(W - 1, Math.floor((x + 0.25 + i * 0.5) * sx)), Y = Math.min(H - 1, Math.floor((y + 0.25 + j * 0.5) * sy)), o = (Y * W + X) * 4;
+        r += px[o]; g += px[o + 1]; b += px[o + 2]; a += px[o + 3];
+      }
+      const q = (y * tw + x) * 4;
+      if (flat) { const k = a / 1020; out[q] = r / 4 * k + 255 * (1 - k); out[q + 1] = g / 4 * k + 255 * (1 - k); out[q + 2] = b / 4 * k + 255 * (1 - k); out[q + 3] = 255; }
+      else { out[q] = r / 4; out[q + 1] = g / 4; out[q + 2] = b / 4; out[q + 3] = a / 4; }
+    }
+  }
+  async function streamPreview(pull, opt) {
+    const R = await makeReader(pull), h = await R.take(13);
+    if (h[0] !== 0x47 || h[1] !== 0x49 || h[2] !== 0x46) throw new Error('não é um GIF');
+    const W = h[6] | (h[7] << 8), H = h[8] | (h[9] << 8), fl = h[10]; let gct = null;
+    if (fl & 0x80) gct = await R.take((2 << (fl & 7)) * 3);
+    const pl = new Player(null, { W, H, frames: [] }); pl.noCk = true;
+    const sc = Math.min(1, opt.maxSide / Math.max(W, H)), tw = Math.max(1, Math.round(W * sc)), th = Math.max(1, Math.round(H * sc));
+    const cv = document.createElement('canvas'); cv.width = tw; cv.height = th; const cx = cv.getContext('2d'), tmp = cx.createImageData(tw, th);
+    const blobs = [], delays = []; let gce = null, png = null;
+    for (;;) {
+      if (opt.cancelled && opt.cancelled()) throw new Error('cancelado');
+      const t = await R.byte();
+      if (t === 0x3b) break;
+      if (t === 0x21) {
+        const label = await R.byte(); let first = true;
+        for (;;) { const n = await R.byte(); if (!n) break; const d = await R.take(n); if (label === 0xf9 && first) gce = { disp: (d[0] >> 2) & 7, trans: d[0] & 1 ? d[3] : -1, delay: d[1] | (d[2] << 8) }; first = false; }
+        continue;
+      }
+      if (t !== 0x2c) break;
+      const d = await R.take(9), f = { x: d[0] | (d[1] << 8), y: d[2] | (d[3] << 8), w: d[4] | (d[5] << 8), h: d[6] | (d[7] << 8) }, fb = d[8];
+      let lct = null; if (fb & 0x80) lct = await R.take((2 << (fb & 7)) * 3);
+      f.il = !!(fb & 0x40); f.pal = lct || gct; f.min = await R.byte(); f.start = 0;
+      let buf = new Uint8Array(1 << 16), len = 0;
+      for (;;) {
+        const n = await R.byte(); if (len + n + 2 > buf.length) { const nb = new Uint8Array(Math.max(buf.length * 2, len + n + 2)); nb.set(buf.subarray(0, len)); buf = nb; }
+        buf[len++] = n; if (!n) break; buf.set(await R.take(n), len); len += n;
+      }
+      f.buf = buf; f.disp = gce ? gce.disp : 0; f.trans = gce ? gce.trans : -1; const dl = gce ? gce.delay : 10; f.delay = (dl <= 1 ? 10 : dl) * 10; gce = null;
+      if (png === null) png = f.trans >= 0;
+      pl.frames.push(f); pl.n = pl.frames.length; pl.step(); f.buf = null;
+      shrink(pl.px, W, H, tmp.data, tw, th, !png); cx.putImageData(tmp, 0, 0);
+      const blob = await new Promise((r) => cv.toBlob(r, png ? 'image/png' : 'image/jpeg', 0.78)); if (!blob) throw new Error('sem imagem');
+      blobs.push(blob); delays.push(f.delay);
+      if (opt.onProgress) opt.onProgress(blobs.length);
+      if (blobs.length % 4 === 0) await new Promise((r) => setTimeout(r, 0));
+    }
+    if (!blobs.length) throw new Error('GIF sem quadros');
+    cv.width = cv.height = 0;
+    return { W, H, tw, th, n: blobs.length, delays, blobs };
+  }
+  const api = { parse, Player, still, streamPreview };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.GifDec = api;
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
@@ -513,8 +921,13 @@ const store = {
   async save(b) {
     if (!this.db) return;
     const t = this.db.transaction(['boards', 'blobs'], 'readwrite');
-    t.objectStore('boards').put({ id: b.id, name: b.name, updated: Date.now(), view: b.view, nextId: b.nextId, items: b.items, count: b.items.length });
-    for (const k in b.images) { const im = b.images[k]; if (!im.persisted) { t.objectStore('blobs').put({ name: im.name, mime: im.mime, buf: im.buf, w: im.w, h: im.h }, b.id + '/' + k); im.persisted = true; } }
+    t.objectStore('boards').put({ id: b.id, name: b.name, updated: Date.now(), view: b.view, nextId: b.nextId, items: b.items, count: b.items.length, lazy: !!b.lazy, source: b.source || null });
+    for (const k in b.images) {
+      const im = b.images[k]; if (im.persisted) continue;
+      if (im.lazy) { if (!im.thumb) continue; t.objectStore('blobs').put({ name: im.name, mime: im.mime, w: im.w, h: im.h, lazy: true, checksum: im.checksum || null, thumb: im.thumb, thumbMime: im.thumbMime }, b.id + '/' + k); }
+      else t.objectStore('blobs').put({ name: im.name, mime: im.mime, buf: im.buf, w: im.w, h: im.h }, b.id + '/' + k);
+      im.persisted = true;
+    }
     await this.done(t);
   },
   async remove(id) {
@@ -539,8 +952,27 @@ const pref = {
 /* ================= Imagens e elementos ================= */
 function urlOf(imgId) {
   const im = board.images[imgId]; if (!im) return '';
+  if (im.lazy) {
+    if (im.fullUrl) return im.fullUrl;
+    if (im.thumb) { if (!im.thumbUrl) im.thumbUrl = URL.createObjectURL(new Blob([im.thumb], { type: im.thumbMime || 'image/png' })); return im.thumbUrl; }
+    return BLANK;
+  }
+  if (isGif(im)) { if (im.stillUrl) return im.stillUrl; requestStill(im); return BLANK; }
   if (!im.url) im.url = URL.createObjectURL(new Blob([im.buf], { type: im.mime }));
   return im.url;
+}
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+function decorate(d, im) {
+  d.classList.toggle('ph', !!(im && ((im.lazy && !im.thumb) || (isGif(im) && !im.lazy && !im.stillUrl))));
+}
+function refreshImg(imgId) {
+  if (!board) return; const im = board.images[imgId]; if (!im) return;
+  for (const it of board.items) if (it.type === 'image' && it.img === imgId) { const d = els.get(it.id); if (!d) continue; const e = d.querySelector('img'); if (e) { const u = urlOf(imgId); if (e.src !== u) e.src = u; } decorate(d, im); }
+}
+function disposeBoard(b) {
+  if (!b) return;
+  for (const k in b.images) { const im = b.images[k]; for (const f of ['url', 'thumbUrl', 'fullUrl', 'stillUrl']) if (im[f]) { try { URL.revokeObjectURL(im[f]); } catch (e) { /* ok */ } im[f] = null; } }
+  liveWant.clear(); livePending.clear(); gifStopAll();
 }
 /* Notas: o PureRef 2.x guarda o texto como HTML do Qt. Reconstruímos só tags e estilos seguros. */
 const NOTE_TAGS = new Set(['P', 'SPAN', 'B', 'I', 'U', 'S', 'EM', 'STRONG', 'BR', 'DIV', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'SUB', 'SUP', 'FONT']);
@@ -574,7 +1006,8 @@ function makeEl(it) {
   const d = document.createElement('div'); d.className = 'item' + (it.type === 'note' ? ' note' : ''); d.dataset.id = it.id;
   if (it.type === 'image') {
     d.style.width = it.w + 'px'; d.style.height = it.h + 'px';
-    const im = new Image(); im.decoding = 'async'; im.draggable = false; im.alt = it.name || ''; im.src = urlOf(it.img); d.appendChild(im);
+    const im = new Image(); im.decoding = 'async'; im.draggable = false; im.alt = it.name || ''; im.src = urlOf(it.img); d.appendChild(im); decorate(d, board.images[it.img]);
+    const gs = gifp.get(it.id); if (gs && gs.canvas) { d.appendChild(gs.canvas); d.classList.add('gp'); }
   } else buildNote(d, it);
   els.set(it.id, d); world.appendChild(d);
   if (it.type === 'note') { it.w = d.offsetWidth; it.h = d.offsetHeight; }
@@ -592,20 +1025,162 @@ function rebuildAll() {
   world.textContent = ''; els.clear();
   normalizeZ(); board.items.forEach(makeEl);
   for (const id of [...sel]) if (!itemById(id)) sel.delete(id);
+  for (const id of [...gifp.keys()]) if (!itemById(id)) gifStop(id);
   applyView(); updateChrome();
 }
 function applyView() {
   const v = view(); world.style.transform = 'translate(' + v.x + 'px,' + v.y + 'px) scale(' + v.z + ')';
   const g = Math.max(12, 28 * v.z); stage.style.backgroundSize = g + 'px ' + g + 'px';
   stage.style.backgroundPosition = (v.x % g) + 'px ' + (v.y % g) + 'px';
-  drawSel();
+  world.style.setProperty('--z', v.z);
+  drawSel(); scheduleLive();
 }
 function updateChrome() {
   $('#boardname').textContent = board ? board.name : 'Boards';
   $('#empty').hidden = !!(board && board.items.length);
+  const nl = !!(board && board.lazy && !board.link && !job); $('#linkbar').hidden = !nl;
+  if (nl) $('#linktxt').textContent = 'Mostrando miniaturas' + (board.source ? ' de "' + board.source.name + '"' : '') + '. Vincule o arquivo original para ver os GIFs em movimento.';
   $('#b-undo').disabled = !undoStack.length; $('#b-redo').disabled = !redoStack.length;
   drawSel();
 }
+
+
+/* ================= GIFs: parados por padrão, com play e barra de quadros ================= */
+const GIFL = { max: 300e6, px: 8e6 }, GIF_PLAYERS_MAX = 4, GIF_STILL_SIDE = 1024, GIF_PV_SIDE = 420;
+const gifp = new Map(); // id do item -> estado do player
+const isGif = (im) => !!im && im.mime === 'image/gif';
+let stillChain = Promise.resolve();
+function requestStill(im) { // primeiro quadro do GIF como imagem parada (não anima sozinho)
+  if (im.stillBusy) return; im.stillBusy = true; const b = board;
+  stillChain = stillChain.then(async () => {
+    try {
+      const r = await GifDec.still(new Uint8Array(im.buf), GIF_STILL_SIDE);
+      if (board === b) im.stillUrl = URL.createObjectURL(r.blob);
+    } catch (e) { if (board === b) im.stillUrl = URL.createObjectURL(new Blob([im.buf], { type: im.mime })); }
+    im.stillBusy = false; if (board === b) refreshImg(im.id);
+    await new Promise((r) => setTimeout(r, 0));
+  });
+}
+function gifItem() {
+  if (!board || sel.size !== 1) return null; const it = itemById([...sel][0]); if (!it || it.type !== 'image') return null;
+  const im = board.images[it.img]; return isGif(im) ? { it, im } : null;
+}
+function gifState(it, im) { let s = gifp.get(it.id); if (!s) { s = { it, im, kind: null, n: 0, pl: null, pv: null, canvas: null, ctx: null, frame: 0, playing: false, intent: false, loading: 0, err: '', last: 0, acc: 0, p: null, got: 0, cache: new Map(), tok: 0 }; gifp.set(it.id, s); } return s; }
+function gifStop(id) {
+  const s = gifp.get(id); if (!s) return; s.playing = false; s.intent = false; s.dead = true;
+  if (s.canvas) { s.canvas.remove(); s.canvas.width = s.canvas.height = 0; }
+  for (const b of s.cache.values()) { try { b.close(); } catch (e) { /* ok */ } } s.cache.clear();
+  const d = els.get(id); if (d) d.classList.remove('gp'); gifp.delete(id);
+}
+function gifStopAll() { for (const id of [...gifp.keys()]) gifStop(id); }
+const gifDelay = (s, f) => (s.kind === 'pv' ? s.pv.delays[f] : s.pl.frames[f].delay);
+async function pvBitmap(s, f) {
+  let b = s.cache.get(f); if (b) { s.cache.delete(f); s.cache.set(f, b); return b; }
+  b = await createImageBitmap(s.pv.blobs[f]); if (s.dead) { b.close(); return null; }
+  s.cache.set(f, b); while (s.cache.size > 36) { const k = s.cache.keys().next().value; try { s.cache.get(k).close(); } catch (e) { /* ok */ } s.cache.delete(k); }
+  return b;
+}
+async function gifShow(s, f) { // mostra o quadro f
+  s.frame = f;
+  if (s.kind === 'full') { s.pl.seek(f); s.ctx.putImageData(s.img, 0, 0); return; }
+  const tok = ++s.tok, b = await pvBitmap(s, f); if (!b || s.dead || tok !== s.tok) return;
+  s.ctx.drawImage(b, 0, 0);
+  for (let k = 1; k <= 6; k++) { const g = (f + k) % s.n; if (!s.cache.has(g)) pvBitmap(s, g).catch(() => {}); }
+}
+function mkChannel() { // ponte entre a leitura do arquivo (empurra pedaços) e o decodificador (puxa pedaços)
+  const q = []; let wc = null, wp = null, done = false, err = null, stage = new Uint8Array(1 << 20), sl = 0;
+  const flush = async () => { if (!sl) return; q.push(stage.slice(0, sl)); sl = 0; if (wc) { wc(); wc = null; } if (q.length > 3) await new Promise((r) => { wp = r; }); };
+  return {
+    async push(p) { let o = 0; while (o < p.length) { const k = Math.min(p.length - o, stage.length - sl); stage.set(p.subarray(o, o + k), sl); sl += k; o += k; if (sl === stage.length) await flush(); } },
+    async pull() { for (;;) { if (q.length) { const p = q.shift(); if (wp && q.length <= 1) { wp(); wp = null; } return p; } if (err) throw err; if (done) return null; await new Promise((r) => { wc = r; }); } },
+    async end(e) { if (!e) await flush(); done = true; err = e || null; if (wc) { wc(); wc = null; } if (wp) { wp(); wp = null; } }
+  };
+}
+async function gifLoad(s) {
+  if (s.kind) return true; if (s.p) return s.p;
+  s.err = ''; s.loading = 1; s.got = 0; updateGifBar(true);
+  s.p = (async () => {
+    const im = s.im; let bytes = null, desc = null;
+    if (!im.lazy) bytes = new Uint8Array(im.buf);
+    else {
+      const link = board.link; desc = link && link.descs.get(im.id);
+      if (!desc) { act.link(); s.err = 'Vincule o arquivo .pur original para ver este GIF.'; return false; }
+    }
+    const len = desc ? desc.len : bytes.length, dims = desc ? BigFile.dimsFromHead(desc.head) : null, px = dims ? dims[0] * dims[1] : (im.w || 0) * (im.h || 0);
+    const preview = len > GIFL.max || px > GIFL.px;
+    if (!preview) {
+      if (desc) { const parts = await link_read(desc, s); bytes = new Uint8Array(await new Blob(parts).arrayBuffer()); }
+      const pl = new GifDec.Player(bytes); pl.seek(0); if (s.dead) return false;
+      s.pl = pl; s.n = pl.n; s.kind = 'full'; s.canvas = Object.assign(document.createElement('canvas'), { width: pl.W, height: pl.H, className: 'gifc' });
+      s.ctx = s.canvas.getContext('2d'); s.img = new ImageData(pl.px, pl.W, pl.H);
+    } else {
+      toast('Este GIF é muito grande: vou preparar uma prévia de todos os quadros em tamanho menor. Pode demorar.', 7000);
+      const ch = mkChannel();
+      const prod = desc ? board.link.db.readParts(desc, (n) => { s.got += n; gifPos(s); }, () => s.dead, ch.push) : (async () => { for (let o = 0; o < bytes.length && !s.dead; o += 1 << 20) await ch.push(bytes.subarray(o, Math.min(bytes.length, o + (1 << 20)))); })();
+      prod.then(() => ch.end(), (e) => ch.end(e));
+      const pv = await GifDec.streamPreview(ch.pull, { maxSide: GIF_PV_SIDE, cancelled: () => s.dead, onProgress: (n) => { s.nDone = n; gifPos(s); } });
+      if (s.dead) return false;
+      s.pv = pv; s.n = pv.n; s.kind = 'pv'; s.canvas = Object.assign(document.createElement('canvas'), { width: pv.tw, height: pv.th, className: 'gifc' }); s.ctx = s.canvas.getContext('2d');
+    }
+    while (gifp.size > GIF_PLAYERS_MAX) { const old = [...gifp.keys()].find((k) => k !== s.it.id); if (old == null) break; gifStop(old); }
+    const d = els.get(s.it.id); if (d) { d.appendChild(s.canvas); d.classList.add('gp'); }
+    s.frame = 0; s.acc = 0; await gifShow(s, 0); return true;
+  })().catch((e) => { if (!s.dead) s.err = 'Não consegui abrir este GIF: ' + e.message; return false; }).finally(() => { s.loading = 0; s.p = null; if (!s.kind) s.intent = false; updateGifBar(true); });
+  return s.p;
+}
+function link_read(desc, s) { return board.link.db.readParts(desc, (n) => { s.got += n; gifPos(s); }, () => s.dead); }
+let gifRaf = 0;
+function gifTick(ts) {
+  gifRaf = 0; let any = false;
+  for (const s of gifp.values()) {
+    if (!s.playing || !s.kind) continue; any = true;
+    if (!s.last) s.last = ts; s.acc += Math.min(ts - s.last, 250); s.last = ts;
+    let k = 0, f = s.frame;
+    while (s.acc >= gifDelay(s, f) && k < 8) { s.acc -= gifDelay(s, f); f = (f + 1) % s.n; k++; }
+    if (s.acc > 200) s.acc = 200;
+    if (k) { if (s.kind === 'pv' && !s.cache.has(f)) { s.acc += 0; pvBitmap(s, f).catch(() => {}); } else { gifShow(s, f); } const g = gifItem(); if (g && g.it.id === s.it.id) gifPos(s); }
+  }
+  if (any) gifRaf = requestAnimationFrame(gifTick);
+}
+function gifKick() { for (const s of gifp.values()) if (s.playing) s.last = 0; if (!gifRaf) gifRaf = requestAnimationFrame(gifTick); }
+function gifPos(s, txt) {
+  const g = gifItem(); if (!g || g.it.id !== s.it.id) return;
+  let t = txt;
+  if (!t) {
+    if (s.loading) { const len = s.im.lazy && board.link && board.link.descs.get(s.im.id) ? board.link.descs.get(s.im.id).len : 0; t = 'Carregando' + (len ? ' ' + Math.min(99, Math.round(100 * s.got / len)) + '%' : '…'); }
+    else if (s.err) t = s.err; else t = s.kind ? (s.frame + 1) + ' / ' + s.n : 'GIF';
+  }
+  const el = $('#g-pos'); el.textContent = t; el.classList.toggle('err', !!s.err && !s.loading);
+  if (s.kind && !gifDrag) $('#g-seek').value = s.n > 1 ? Math.round(1000 * s.frame / (s.n - 1)) : 0;
+}
+let gbKey = '', gifDrag = false;
+function updateGifBar(force) {
+  const bar = $('#gifbar'), g = gifItem();
+  if (!g) { if (!bar.hidden) bar.hidden = true; gbKey = ''; return; }
+  const s = gifp.get(g.it.id), key = g.it.id + '|' + (s ? (s.kind ? 1 : 0) + '' + (s.playing ? 1 : 0) + (s.intent ? 1 : 0) + (s.loading ? 1 : 0) + (s.err ? 1 : 0) : '-');
+  if (key === gbKey && !force && !bar.hidden) return; gbKey = key; bar.hidden = false;
+  const on = !!(s && (s.playing || s.intent));
+  $('#g-play').innerHTML = '<svg class="i"><use href="#i-' + (on ? 'pause' : 'play') + '"/></svg>';
+  $('#g-play').setAttribute('aria-label', on ? 'Pausar' : 'Tocar');
+  if (s) gifPos(s); else { const el = $('#g-pos'); el.textContent = 'GIF'; el.classList.remove('err'); $('#g-seek').value = 0; }
+}
+async function gifToggle() {
+  const g = gifItem(); if (!g) return; const s = gifState(g.it, g.im);
+  if (s.playing || s.intent) { s.playing = false; s.intent = false; updateGifBar(true); return; }
+  s.intent = true; updateGifBar(true);
+  if (!s.kind && !(await gifLoad(s))) { s.intent = false; updateGifBar(true); return; }
+  if (!s.intent || s.dead) return; s.playing = true; s.last = 0; updateGifBar(true); gifKick();
+}
+async function gifSeek(frac) {
+  const g = gifItem(); if (!g) return; const s = gifState(g.it, g.im); s.want = frac; s.intent = false; s.playing = false;
+  if (!s.kind) { if (!(await gifLoad(s))) return; }
+  if (s.dead) return; await gifShow(s, Math.round(s.want * (s.n - 1))); updateGifBar(true); gifPos(s);
+}
+$('#g-play').addEventListener('click', gifToggle);
+const gSeek = $('#g-seek');
+gSeek.addEventListener('pointerdown', () => { gifDrag = true; }); window.addEventListener('pointerup', () => { gifDrag = false; });
+gSeek.addEventListener('input', () => gifSeek(+gSeek.value / 1000));
+['pointerdown', 'pointermove', 'touchstart'].forEach((n) => $('#gifbar').addEventListener(n, (e) => e.stopPropagation()));
 
 /* ================= Histórico ================= */
 const snapshot = () => JSON.stringify(board.items);
@@ -640,6 +1215,7 @@ function selBox() { // pontos em coordenadas do mundo: tl, tr, br, bl
 }
 const NS = 'http://www.w3.org/2000/svg';
 function drawSel() {
+  updateGifBar();
   svg.textContent = ''; ui.querySelectorAll('.h').forEach((h) => h.remove());
   const ctx = $('#ctx'); const its = board ? selItems() : [];
   if (!its.length) { ctx.hidden = true; return; }
@@ -794,6 +1370,7 @@ const act = {
   tone() { const order = ['auto', 'mid', 'light', 'black'], cur = pref.get('tone') || 'auto', n = order[(order.indexOf(cur) + 1) % order.length]; setTone(n); },
   open() { $('#f-open').value = ''; $('#f-open').click(); },
   addimg() { $('#f-img').value = ''; $('#f-img').click(); },
+  link() { $('#f-link').value = ''; $('#f-link').click(); },
   boards() { openSheet(); }
 };
 function setTone(t) { const r = document.documentElement; if (t === 'auto') r.removeAttribute('data-tone'); else r.setAttribute('data-tone', t); pref.set('tone', t); drawSel(); }
@@ -813,13 +1390,14 @@ document.addEventListener('keyup', (e) => { if (e.code === 'Space') spaceDown = 
 
 /* ================= Boards ================= */
 function newBoard(name) {
+  cancelJob(); disposeBoard(board);
   board = { id: 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name || 'Novo board', items: [], images: {}, view: { x: stage.clientWidth / 2, y: stage.clientHeight / 2, z: 1 }, nextId: 1 };
   sel = new Set(); undoStack = []; redoStack = []; pref.set('last', board.id); rebuildAll(); markDirty(); return board;
 }
 async function openBoard(id) {
   await saveNow();
   const b = await store.load(id); if (!b) { toast('Não encontrei esse board.'); return; }
-  board = b; sel = new Set(); undoStack = []; redoStack = []; pref.set('last', id); rebuildAll(); closeSheet();
+  cancelJob(); disposeBoard(board); board = b; sel = new Set(); undoStack = []; redoStack = []; pref.set('last', id); rebuildAll(); closeSheet();
 }
 const baseName = (n) => n.replace(/\.[^.]+$/, '');
 
@@ -837,11 +1415,221 @@ async function importPur(file) {
   const n = res.items.length;
   toast('Abri "' + b.name + '" (PureRef ' + res.version + '): ' + n + (n === 1 ? ' item' : ' itens') + '.' + (res.warnings.length ? ' ' + res.warnings.join(' ') : ''), res.warnings.length ? 8000 : 4200);
 }
+/* ================= Modo board gigante =================
+ * Para .pur de centenas de MB ou GB. O arquivo nunca é carregado inteiro:
+ *  1) lê só a estrutura (itens, posições) e mostra o board na hora, com quadrinhos cinza no lugar das imagens;
+ *  2) vai lendo imagem por imagem, gera uma miniatura de cada uma e guarda as miniaturas no aparelho;
+ *  3) GIFs e imagens grandes só são carregados por inteiro quando estão perto do centro da tela (no máximo 8).
+ * Depois da primeira vez o board abre só com as miniaturas; o arquivo original só é preciso para ver os GIFs em movimento. */
+const BIG = { threshold: 200e6, thumbSide: 480, smallLimit: 350e3, liveMax: 8, liveMinPx: 110, liveStaticPx: 420, liveItemMax: 450e6 };
+let job = null, wake = null;
+const liveWant = new Set(), livePending = new Set();
+let liveActive = 0, liveT = 0, progRaf = 0;
+const lw = $('#loading');
+const fmtB = (n) => (n >= 1e9 ? (n / 1e9).toFixed(1).replace('.', ',') + ' GB' : (n / 1e6).toFixed(0) + ' MB');
+const fmtT = (s) => (!isFinite(s) ? '…' : s < 90 ? 'menos de 2 min' : 'cerca de ' + Math.round(s / 60) + ' min');
+
+async function keepAwake(on) { // evita que o iPad apague a tela e pause o carregamento
+  try {
+    if (on && !wake && navigator.wakeLock) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); }
+    else if (!on && wake) { const w = wake; wake = null; await w.release(); }
+  } catch (e) { wake = null; }
+}
+function progOpen(title, file, status) {
+  lw.hidden = false; lw.classList.remove('min'); lw.classList.add('indet');
+  $('#lt-title').textContent = title; $('#lt-file').textContent = file || ''; $('#lt-count').textContent = status || '';
+  $('#lt-bytes').textContent = ''; $('#lt-eta').textContent = ''; $('#lt-pill').textContent = 'Carregando'; $('#lt-bar').style.width = '4%';
+  const mb = lw.querySelector('[data-big=min]'); if (mb) mb.textContent = '—';
+}
+function progClose() { lw.hidden = true; }
+function progUpdate() {
+  if (progRaf || !job) return;
+  progRaf = requestAnimationFrame(() => {
+    progRaf = 0; const j = job; if (!j) return;
+    const frac = j.total ? Math.min(1, j.done / j.total) : 0, el = (Date.now() - j.t0) / 1000;
+    lw.classList.remove('indet'); $('#lt-bar').style.width = Math.max(3, frac * 100) + '%';
+    $('#lt-count').textContent = 'Miniaturas: ' + j.doneCount + ' de ' + j.count;
+    $('#lt-bytes').textContent = fmtB(j.done) + ' de ' + fmtB(j.total);
+    $('#lt-eta').textContent = j.done > 5e6 && el > 3 ? 'Falta ' + fmtT((j.total - j.done) / (j.done / el)) : 'Calculando o tempo…';
+    $('#lt-pill').textContent = 'Carregando ' + Math.round(frac * 100) + '%';
+  });
+}
+function cancelJob() { if (job) job.cancel = true; }
+document.querySelectorAll('[data-big]').forEach((b) => b.addEventListener('click', () => {
+  const a = b.dataset.big;
+  if (a === 'min') { lw.classList.toggle('min'); b.textContent = lw.classList.contains('min') ? '+' : '—'; }
+  else if (a === 'cancel') { cancelJob(); progClose(); keepAwake(false); toast('Carregamento cancelado. O layout ficou salvo; vincule o arquivo de novo para continuar as miniaturas.', 6500); }
+}));
+
+/* ---------- miniaturas ---------- */
+function makeThumb(blob, mime) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob), img = new Image(); let done = false, tm = 0;
+    const fin = (fn, v) => { if (done) return; done = true; clearTimeout(tm); img.onload = img.onerror = null; img.src = ''; URL.revokeObjectURL(url); fn(v); };
+    tm = setTimeout(() => fin(reject, new Error('tempo esgotado')), 90000);
+    img.decoding = 'async'; img.src = url;
+    img.decode().then(async () => {
+      try {
+        const nw = img.naturalWidth, nh = img.naturalHeight, sc = Math.min(1, BIG.thumbSide / Math.max(nw, nh));
+        const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(nw * sc)); c.height = Math.max(1, Math.round(nh * sc));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        const type = mime === 'image/jpeg' ? 'image/jpeg' : 'image/png';
+        const out = await new Promise((r) => c.toBlob(r, type, 0.86));
+        if (!out) throw new Error('sem miniatura');
+        const buf = await out.arrayBuffer(); c.width = c.height = 0;
+        fin(resolve, { buf, mime: type, w: nw, h: nh });
+      } catch (e) { fin(reject, e); }
+    }, (e) => fin(reject, e || new Error('imagem inválida')));
+  });
+}
+const applyIfCurrent = (b, id) => { if (board === b) refreshImg(id); };
+function resizeEls(b, imgId) {
+  if (board !== b) return;
+  for (const it of b.items) if (it.type === 'image' && it.img === imgId) { const d = els.get(it.id); if (d) { d.style.width = it.w + 'px'; d.style.height = it.h + 'px'; } }
+}
+async function makeThumbFor(j, id) {
+  const b = j.board, im = b.images[id], desc = j.link.descs.get(id);
+  const parts = await j.link.db.readParts(desc, (n) => { j.done += n; progUpdate(); }, () => j.cancel);
+  const blob = new Blob(parts, { type: im.mime });
+  if (desc.len <= BIG.smallLimit) { // imagem pequena: guarda inteira como imagem comum
+    im.buf = await blob.arrayBuffer(); im.lazy = false; im.persisted = false; applyIfCurrent(b, id); markDirty(); return;
+  }
+  const t = await makeThumb(blob, im.mime);
+  if (j.cancel) return;
+  im.thumb = t.buf; im.thumbMime = t.mime; im.thumbUrl = null; im.persisted = false;
+  if (t.w !== im.w || t.h !== im.h) { im.w = t.w; im.h = t.h; for (const it of b.items) if (it.type === 'image' && it.img === id) { it.w = t.w; it.h = t.h; } resizeEls(b, id); }
+  applyIfCurrent(b, id); markDirty();
+}
+function thumbQueue() { // as imagens de cima primeiro, que são as que aparecem
+  const seen = new Set(), q = [];
+  for (const it of board.items.slice().sort((a, b) => b.z - a.z)) {
+    if (it.type !== 'image' || seen.has(it.img)) continue; seen.add(it.img);
+    const im = board.images[it.img]; if (im && im.lazy && !im.thumb && board.link.descs.has(im.id)) q.push(im.id);
+  }
+  return q;
+}
+async function runThumbs() {
+  const b = board, link = b && b.link; if (!link) { progClose(); return; }
+  const q = thumbQueue(); if (!q.length) { progClose(); updateChrome(); return; }
+  const total = q.reduce((s, id) => s + link.descs.get(id).len, 0);
+  const j = job = { board: b, link, q, total, done: 0, doneCount: 0, count: q.length, t0: Date.now(), cancel: false, failed: 0 };
+  if (lw.hidden) progOpen(b.name, b.source ? b.source.name : '', '');
+  keepAwake(true); progUpdate();
+  const worker = async () => {
+    while (!j.cancel && j.q.length) {
+      const id = j.q.shift();
+      try { await makeThumbFor(j, id); } catch (e) { if (!j.cancel) j.failed++; }
+      j.doneCount++; progUpdate(); await new Promise((r) => setTimeout(r, 0));
+    }
+  };
+  await Promise.all([worker(), worker()]);
+  await saveNow(); keepAwake(false);
+  if (job === j) job = null; progClose();
+  if (!j.cancel) toast('Pronto: ' + j.count + (j.count === 1 ? ' imagem carregada' : ' imagens carregadas') + (j.failed ? ' (' + j.failed + ' com erro)' : '') + '. As miniaturas ficam salvas, então o board abre rápido da próxima vez.', 8000);
+  updateChrome(); scheduleLive();
+}
+
+/* ---------- importar ---------- */
+async function importBig(file) {
+  progOpen('Abrindo board gigante', file.name, 'Lendo a estrutura do arquivo…');
+  let db, scene;
+  try {
+    db = await BigFile.open(file);
+    const R = {}; for (const n of PurParser.TABLES) R[n] = await db.rows(n, n === 'images');
+    for (const r of R.images) if (r.data && r.data.lazy) { const d = BigFile.dimsFromHead(r.data.head); if (d) { r.width = d[0]; r.height = d[1]; } }
+    scene = PurParser.assemble(R);
+  } catch (e) { progClose(); toast('Não consegui abrir "' + file.name + '": ' + e.message, 9000); return; }
+  await saveNow();
+  const b = newBoard(baseName(file.name) || 'Importado');
+  b.lazy = true; b.source = { name: file.name, size: file.size };
+  const descs = new Map(); let maxId = 0;
+  for (const k in scene.images) {
+    const im = scene.images[k], base = { id: +k, name: im.name, mime: im.mime, w: im.w, h: im.h, checksum: im.checksum };
+    if (im.lazy) { descs.set(+k, im.lazy); b.images[k] = Object.assign(base, { lazy: true }); }
+    else b.images[k] = Object.assign(base, { buf: im.bytes.buffer.slice(im.bytes.byteOffset, im.bytes.byteOffset + im.bytes.byteLength) });
+  }
+  for (const it of scene.items) { b.items.push(it); maxId = Math.max(maxId, it.id); }
+  b.nextId = Math.max(maxId, ...Object.keys(scene.images).map(Number), 0) + 1;
+  b.link = { file, db, descs };
+  rebuildAll(); fitAll(); updateChrome(); markDirty(); await saveNow();
+  if (scene.warnings.length) toast(scene.warnings.join(' '), 7000);
+  await runThumbs();
+}
+
+/* ---------- vincular o arquivo original a um board gigante já salvo ---------- */
+async function linkFile(file) {
+  const b = board; if (!file || !b || !b.lazy) return;
+  progOpen('Vinculando arquivo', file.name, 'Conferindo se é o mesmo board…');
+  try {
+    const db = await BigFile.open(file), rows = await db.rows('images', true), descs = new Map(), asStr = PurParser._.asString;
+    let match = 0, mism = 0;
+    for (const r of rows) {
+      const im = b.images[r.id]; if (!im || !im.lazy || !(r.data && r.data.lazy)) continue;
+      if (im.checksum && asStr(r.checksum) !== im.checksum) mism++; else { match++; descs.set(r.id, r.data); }
+    }
+    if (!match || mism > match) { progClose(); toast('Esse arquivo não parece ser o mesmo board. Escolha o .pur original.', 7000); return; }
+    if (board !== b) { progClose(); return; }
+    b.link = { file, db, descs }; progClose(); updateChrome();
+    toast('Arquivo vinculado. Chegue perto dos GIFs para vê-los em movimento.', 5000);
+    await runThumbs(); scheduleLive();
+  } catch (e) { progClose(); toast('Não consegui ler "' + file.name + '": ' + e.message, 7000); }
+}
+$('#f-link').addEventListener('change', (e) => linkFile(e.target.files[0]));
+
+/* ---------- GIFs e imagens grandes ao vivo, só perto da tela ---------- */
+function scheduleLive() { if (!board || !board.lazy || !board.link) return; clearTimeout(liveT); liveT = setTimeout(updateLive, 160); }
+function flagLoading(b, id, on) {
+  if (board !== b) return;
+  for (const it of b.items) if (it.type === 'image' && it.img === id) { const d = els.get(it.id); if (d) d.classList.toggle('loading', on); }
+}
+function releaseFull(im) {
+  const u = im.fullUrl; im.fullUrl = null; refreshImg(im.id); setTimeout(() => { try { URL.revokeObjectURL(u); } catch (e) { /* ok */ } }, 800);
+}
+async function loadFull(b, im) {
+  const link = b.link, desc = link && link.descs.get(im.id); if (!desc || im.fullUrl || im.loading) return;
+  if (desc.len > BIG.liveItemMax) { im.tooBig = true; return; }
+  im.loading = true; flagLoading(b, im.id, true);
+  try {
+    const parts = await link.db.readParts(desc, null, () => !liveWant.has(im.id) || board !== b);
+    const url = URL.createObjectURL(new Blob(parts, { type: im.mime }));
+    const probe = new Image(); probe.src = url; try { await probe.decode(); } catch (e) { /* mostra mesmo assim */ }
+    if (board === b && liveWant.has(im.id)) { im.fullUrl = url; refreshImg(im.id); } else URL.revokeObjectURL(url);
+  } catch (e) { /* cancelado ou falhou: continua com a miniatura */ }
+  finally { im.loading = false; flagLoading(b, im.id, false); }
+}
+function pumpLive() {
+  while (liveActive < 2 && livePending.size) {
+    const id = livePending.values().next().value; livePending.delete(id);
+    const im = board && board.images[id]; if (!im || !liveWant.has(id) || im.fullUrl || im.loading) continue;
+    liveActive++; loadFull(board, im).then(() => { liveActive--; pumpLive(); });
+  }
+}
+function updateLive() {
+  if (!board || !board.lazy || !board.link) return;
+  const W = stage.clientWidth, H = stage.clientHeight, cand = new Map();
+  for (const it of board.items) {
+    if (it.type !== 'image') continue; const im = board.images[it.img]; if (!im || !im.lazy || im.tooBig || im.mime === 'image/gif') continue;
+    const p = corners(it).map(toScreen), xs = p.map((q) => q[0]), ys = p.map((q) => q[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    if (x1 < -0.1 * W || x0 > 1.1 * W || y1 < -0.1 * H || y0 > 1.1 * H) continue;
+    const size = Math.max(Math.hypot(p[1][0] - p[0][0], p[1][1] - p[0][1]), Math.hypot(p[3][0] - p[0][0], p[3][1] - p[0][1]));
+    if (size < (im.mime === 'image/gif' ? BIG.liveMinPx : BIG.liveStaticPx)) continue;
+    const d = Math.hypot((x0 + x1) / 2 - W / 2, (y0 + y1) / 2 - H / 2), prev = cand.get(im.id);
+    if (prev === undefined || d < prev) cand.set(im.id, d);
+  }
+  const ranked = [...cand.entries()].sort((a, b) => a[1] - b[1]).slice(0, BIG.liveMax).map((e) => e[0]);
+  liveWant.clear(); ranked.forEach((id) => liveWant.add(id));
+  for (const k in board.images) { const im = board.images[k]; if (im.fullUrl && !liveWant.has(im.id)) releaseFull(im); }
+  ranked.forEach((id) => { const im = board.images[id]; if (!im.fullUrl && !im.loading) livePending.add(id); });
+  pumpLive();
+}
+
 async function importBackup(file) {
   try {
     const j = JSON.parse(await file.text()); if (j.app !== 'mesa-de-referencias') throw new Error('arquivo de outro programa');
     await saveNow(); const b = newBoard(j.name || baseName(file.name));
-    for (const k in j.images) { const im = j.images[k]; b.images[k] = { id: +k, name: im.name, mime: im.mime, w: im.w, h: im.h, buf: fromB64(im.b64) }; }
+    for (const k in j.images) { const im = j.images[k]; b.images[k] = im.lazy ? { id: +k, name: im.name, mime: im.mime, w: im.w, h: im.h, lazy: true, thumb: im.b64 ? fromB64(im.b64) : null, thumbMime: im.thumbMime } : { id: +k, name: im.name, mime: im.mime, w: im.w, h: im.h, buf: fromB64(im.b64) }; }
+    if (j.lazy) { b.lazy = true; b.source = j.source || null; }
     b.items = j.items; b.nextId = j.nextId; rebuildAll(); fitAll(); markDirty(); toast('Backup aberto: ' + b.name);
   } catch (e) { toast('Backup inválido: ' + e.message, 6000); }
 }
@@ -859,8 +1647,8 @@ async function shareOrDownload(blob, filename) {
 }
 async function exportBackup() {
   if (!board) return;
-  const images = {}; for (const k in board.images) { const im = board.images[k]; images[k] = { name: im.name, mime: im.mime, w: im.w, h: im.h, b64: toB64(im.buf) }; }
-  const blob = new Blob([JSON.stringify({ app: 'mesa-de-referencias', v: 1, name: board.name, nextId: board.nextId, items: board.items, images })], { type: 'application/json' });
+  const images = {}; for (const k in board.images) { const im = board.images[k]; images[k] = { name: im.name, mime: im.mime, w: im.w, h: im.h, b64: im.lazy ? (im.thumb ? toB64(im.thumb) : '') : toB64(im.buf), lazy: !!im.lazy, thumbMime: im.thumbMime || null }; }
+  const blob = new Blob([JSON.stringify({ app: 'mesa-de-referencias', v: 1, lazy: !!board.lazy, source: board.source || null, name: board.name, nextId: board.nextId, items: board.items, images })], { type: 'application/json' });
   let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
   const fname = (board.name || 'board').replace(/[\\/:*?"<>|]/g, '_') + '.json';
   if (!dl) { await shareOrDownload(blob, fname); return; }
@@ -890,7 +1678,7 @@ async function addImages(files) {
 async function handleFiles(list) {
   const files = [...list]; const imgs = [];
   for (const f of files) {
-    if (/\.pur$/i.test(f.name)) await importPur(f);
+    if (/\.pur$/i.test(f.name)) await (f.size > BIG.threshold ? importBig(f) : importPur(f));
     else if (/\.json$/i.test(f.name)) await importBackup(f);
     else imgs.push(f);
   }
@@ -904,7 +1692,7 @@ document.addEventListener('dragleave', () => { dragN = Math.max(0, dragN - 1); i
 document.addEventListener('dragover', (e) => e.preventDefault());
 document.addEventListener('drop', (e) => { e.preventDefault(); dragN = 0; $('#drop').classList.remove('on'); if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
 document.addEventListener('paste', (e) => { const fs = [...(e.clipboardData ? e.clipboardData.files : [])]; if (fs.length) { e.preventDefault(); addImages(fs); } });
-document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); else if (job) keepAwake(true); });
 window.addEventListener('pagehide', saveNow);
 window.addEventListener('resize', () => { if (board) drawSel(); });
 
@@ -925,7 +1713,7 @@ async function renderSheet() {
   for (const b of list) {
     const cur = board && b.id === board.id;
     h += '<div class="row' + (cur ? ' cur' : '') + '">' + (renaming === b.id ? '<input id="rn" value="' + esc(b.name) + '" aria-label="Nome do board">' + '<button class="btn" data-s="rnok" data-id="' + b.id + '" aria-label="Salvar nome">OK</button>'
-      : '<button class="nm" data-s="open" data-id="' + b.id + '">' + esc(b.name) + '<small>' + (b.count || 0) + ' itens · ' + fmtDate(b.updated) + '</small></button>' + '<button class="btn" data-s="rename" data-id="' + b.id + '" aria-label="Renomear">' + icon('edit') + '</button>')
+      : '<button class="nm" data-s="open" data-id="' + b.id + '">' + esc(b.name) + '<small>' + (b.count || 0) + ' itens' + (b.lazy ? ' · board gigante' : '') + ' · ' + fmtDate(b.updated) + '</small></button>' + '<button class="btn" data-s="rename" data-id="' + b.id + '" aria-label="Renomear">' + icon('edit') + '</button>')
       + '<button class="btn danger" data-s="del" data-id="' + b.id + '" aria-label="Apagar board">' + (confirmDel === b.id ? '<span class="t">Apagar?</span>' : icon('trash')) + '</button></div>';
   }
   h += '<div class="cta"><button class="btn" data-s="new">' + icon('plus') + 'Novo board</button><button class="btn primary" data-s="pur" style="background:var(--accent);color:var(--accent-fg)">' + icon('open') + 'Abrir .pur</button>' + (board && board.id !== 'tmp' ? '<button class="btn" data-s="export">' + icon('down') + 'Backup do board atual</button>' : '') + '</div>';
@@ -960,7 +1748,7 @@ panel.addEventListener('click', async (e) => {
   setTone(pref.get('tone') || 'auto');
   board = { id: 'tmp', name: 'Boards', items: [], images: {}, view: { x: stage.clientWidth / 2, y: stage.clientHeight / 2, z: 1 }, nextId: 1 };
   rebuildAll();
-  window.__mesa = { get board() { return board; }, importPur, handleFiles };
+  window.__mesa = { GIFL, gifp, gifToggle, gifSeek, get board() { return board; }, importPur, importBig, linkFile, handleFiles, BIG, get job() { return job; } };
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* ok */ }
   const opened = await Promise.race([store.open(), new Promise((r) => setTimeout(() => r(false), 3000))]);
   const last = pref.get('last');
@@ -971,8 +1759,3 @@ panel.addEventListener('click', async (e) => {
 })();
 
 </script>
-<script>
-if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
-</script>
-</body>
-</html>
